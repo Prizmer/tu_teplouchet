@@ -51,7 +51,7 @@ namespace teplouchetapp
         RecordDescription volume = new RecordDescription(6, 6, 2, 1);
         RecordDescription time_on = new RecordDescription(12, 6, 2, 1);
         RecordDescription power = new RecordDescription(18, 6, 2, 1000);
-        RecordDescription volflow = new RecordDescription(24, 6, 2, 1000);
+        RecordDescription volflow = new RecordDescription(24, 6, 2, 0.001f);
         RecordDescription temp_in = new RecordDescription(30, 4, 2, 0.01f);
         RecordDescription temp_out = new RecordDescription(34, 4, 2, 0.01f);
         RecordDescription temp_diff = new RecordDescription(38, 4, 2, 0.01f);
