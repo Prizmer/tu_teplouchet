@@ -1,0 +1,90 @@
+Анализ ответ прибора на запрос: REQ_UD2
+10 7B FE 79 16 (5)
+Начало ответа:
+68 3D 3D 68 (4)
+
+Заголовок:
+08 02 72 81 34 13 20 93 06 01 04 4C 00 00 00
+Разбор заголовка:
+C  A  CI  
+08 02 72 - variable structure
+# клиента	   id dev   ver  type  an  stat   sign
+[81 34 13 20] [93 06]  [01] [04]  [4C]   [00]  [00 00] (12)
+[81 34 13 20] -> customer number, 8 digit BCD (could be preset at fabrication time, but could be changable afterwards).
+an - access number
+stat -> status, describes errors
+
+Разбор данных:
+(1)
+[25] - первый бит реальных данных: 25й
+[0]
+0C 06 [00 00 00 00 [Энергия 10^3 ВтЧ] (6) 
+DIF 0x0C = 0000 1100 -> 8 digit BCD, no DIFE
+VIF 0x06 = 0 0000 110 -> no VIFE, 0000 - energy Wh, nnn=110, 
+k = 10^(nnn-3) = 10^3
+VALUE: 0 Wh
+
+(2)
+[6]
+0C 16 [00 00 00 00 [Объем м3] (6)
+DIF 0x0C = 0000 1100 -> 8 digit BCD, no DIFE
+VIF 0x16 = 0 0010 110 -> no VIFE, volume, m3,
+k = 10^(nnn-6) = 10^(6-6) = 1;
+VALUE: 0 m3
+
+(3)
+[12]
+0C 22 91 19 00 00 [время работы, час] (6)
+DIF 0x0C = 0000 1100 -> 8 digit BCD, no DIFE
+VIF 0x22 = 0010 0010 -> On time, nn = 10 -> hours
+VALUE: 1991 h
+
+(4)
+[18]
+0C 2E 00 00 00 00 [мощность 10^3 Вт] (6)
+DIF 0x0C = 0000 1100 -> 8 digit BCD, no DIFE
+VIF 0x2E = 0 0101 110 -> no VIFE, power, W,
+k = 10^(nnn-3) = 10^3
+VALUE: 0 W
+
+(5)
+[24] !
+0C 3B 00 00 00 00 [Поток объема 10^3 м3 ч] (6)
+DIF 0x0C = 0000 1100 -> 8 digit BCD, no DIFE
+VIF 0x3B = 0011 1011 -> no VIFE, volume flow, nnn = 011,
+k = 10^(3-6) = 10^(-3)
+
+(6)
+[30]
+0A 59 61 20 [температура подачи 10^-2 С] (4)
+DIF 0x0A = 0000 1010 -> no DIFE, 4 digit BCD
+VIF 0x59 = 0 10110 01 -> no VIFE, flow temperature, *C,
+k = 10^(nn-3) = 10^-2
+VALUE: 20,61 *C
+
+(7)
+[34]
+0A 5D 96 20 [температура выхода 10^-2 С] (4)
+DIF 0x0A = 0000 1010 -> no DIFE, 4 digit BCD
+VIF 0x5D = 0 10111 01 -> no VIFE, return temperature, *C,
+k = 10^(nn-3) = 10^-2
+VALUE: 20,96 *C
+
+(8)
+[38]
+0A 61 35 00 [разница температур 10^-2 К] (4)
+DIF 0x0A = 0000 1010 -> no DIFE, 4 digit BCD
+VIF 0x61 = 0 11000 01 -> temperature difference, *C,
+k = 10^-2
+VALUE: 0,35 *C
+
+(9)
+[42]
+42 6C [EC 14 [дата G] (4)
+DIF 0x42 = 0 1 00 0010 -> storage number 01, function 00, 16 bit integer
+VIF 0x6C = 0 110110 0 -> time point, n = 0 -> only date, type G
+
+
+2A 
+16 
+

@@ -1,0 +1,8 @@
+ComPorts.log
+
+teplouchetapp.suo
+
+teplouchetapp/bin/Release
+
+obj
+obj/*
