@@ -565,6 +565,7 @@ namespace teplouchetapp
             {
                 MessageBox.Show("Остановите опрос перед закрытием программы","Напоминание");
                 e.Cancel = true;
+                return;
             }
 
             if (Vp.isOpened())
