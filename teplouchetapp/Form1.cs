@@ -26,7 +26,8 @@ namespace teplouchetapp
         teplouchet1 Meter = null;
         VirtualPort Vp = null;
 
-        volatile bool bStopProcess = false;
+        //изначально ни один процесс не выполняется, все остановлены
+        volatile bool bStopProcess = true;
         bool bPollOnlyOffline = false;
 
         //default settings for input *.xls file
@@ -342,6 +343,8 @@ namespace teplouchetapp
             numericUpDown1.Enabled = false;
             checkBox1.Enabled = false;
 
+            bStopProcess = false;
+
             pingThr = new Thread(pingMeters);
             pingThr.Start((object)dt);
         }
@@ -398,7 +401,6 @@ namespace teplouchetapp
 
                 if (bStopProcess)
                 {
-                    bStopProcess = false;
                     break;
                 }
             }
@@ -471,14 +473,12 @@ namespace teplouchetapp
                 Invoke(meterPinged);
                 Meter.UnselectAllMeters();
 
+
                 //должно снизить нагрузку на порт
                 Thread.Sleep(5);
 
                 if (bStopProcess)
-                {
-                    bStopProcess = false;
                     break;
-                }
             }
 
             Invoke(pollingEnd);
@@ -532,6 +532,8 @@ namespace teplouchetapp
             numericUpDown1.Enabled = false;
             checkBox1.Enabled = false;
 
+            bStopProcess = false;
+
             if (paramCodes.Count == 0)
             {
                 MessageBox.Show("Загрузите исходные данные, список paramCodes пуст");
@@ -557,25 +559,16 @@ namespace teplouchetapp
             bPollOnlyOffline = checkBox1.Checked;
         }
 
-
-        private void CloseApp(object o, EventArgs e)
-        {
-
-
-            Application.Exit();
-        }
-
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (bStopProcess == false)
             {
-                MessageBox.Show("Остановите опрос перед закрытием программы");
+                MessageBox.Show("Остановите опрос перед закрытием программы","Напоминание");
                 e.Cancel = true;
             }
 
             if (Vp.isOpened())
                 Vp.ClosePort();
-
         }
 
         private void button4_Click(object sender, EventArgs e)
