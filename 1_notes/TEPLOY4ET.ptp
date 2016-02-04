@@ -1,0 +1,144 @@
+VERSION
+8
+
+COMMSETTINGS
+0
+COM2
+COM2
+2400
+0
+0
+4
+0
+1
+
+COMMDISPLAY
+0
+
+VERSATAP
+0
+
+SEND
+0
+Baud : 2400, Parity : Even, Data Bits : 8, Stop bit : 1
+
+0
+5
+
+SEND
+1
+Change Primary ID to 1
+68 06 06 68 53 FE 51 01 7A 01 1E 16
+0
+5
+
+SEND
+2
+Read from Primary ID where ID is 1
+10 7B 01 7C 16
+0
+5
+
+SEND
+3
+Change Primary ID to 2
+68 06 06 68 53 FE 51 01 7A 02 1F 16
+0
+5
+
+SEND
+4
+Read from Primary ID where ID is 2
+10 7B 02 7D 16
+0
+5
+
+SEND
+5
+Are you there from 254
+10 40 FE 3E 16
+0
+1
+
+SEND
+6
+Are you there from 01
+10 40 01 41 16
+0
+5
+
+SEND
+7
+Remove Selection 254(All meters)
+10 40 FE 3E 16
+0
+5
+
+SEND
+8
+Remove Selection to 255(All meters)
+10 40 FF 40 16
+0
+5
+
+SEND
+9
+Remove Selection from all selected meters
+10 40 FD 3D 16
+0
+5
+
+SEND
+10
+Select from secondary id  FFFFFFFF(All meters)
+68 0B 0B 68 53 FD 52 FF FF FF FF FF FF FF FF 9A 16
+0
+5
+
+SEND
+11
+Select from secondary id (ID is 11223344)
+68 0B 0B 68 53 FD 52 44 33 22 11 FF FF FF FF 48 16
+0
+5
+
+SEND
+12
+Select from secondary id (ID is 12345678)
+68 0B 0B 68 53 FD 52 78 56 34 12 FF FF FF FF B2 16
+0
+5
+
+SEND
+13
+req_ud  253
+10 7B FD 78 16
+0
+5
+
+SEND
+14
+req_ud 254
+10 7B 01 7C 16
+0
+5
+
+SEND
+15
+SND_UD_allfromall
+68 04 04 68 53 01 51 7F 24 16
+0
+5
+
+RECEIVE
+0
+ping pong
+E5
+5
+0
+COMMENT 
+0
+1
+0
+0
+

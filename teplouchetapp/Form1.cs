@@ -446,7 +446,7 @@ namespace teplouchetapp
                 Meter.UnselectAllMeters();
 
                 //должно снизить нагрузку на порт
-                Thread.Sleep(10);
+                Thread.Sleep(5);
 
                 if (bStopProcess)
                 {
