@@ -351,7 +351,7 @@ namespace teplouchetapp
         const string METER_IS_OFFLINE = "Нет связи";
         const string REPEAT_REQUEST = "Повтор";
 
-        int attempts = 3;
+        int attempts = 4;
 
         private void pingMeters(Object metersDt)
         {
@@ -434,6 +434,7 @@ namespace teplouchetapp
                         for (int c = 0; c < attempts; c++)
                             if (Meter.SelectBySecondaryId(tmpNumb))
                             {
+                                Thread.Sleep(100);
                                 List<float> valList = new List<float>();
                                 if (Meter.ReadCurrentValues(paramCodes, out valList))
                                 {

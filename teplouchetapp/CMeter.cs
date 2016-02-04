@@ -20,7 +20,7 @@ namespace teplouchetapp
         /// <param name="str"></param>
         public void WriteToLog(string str, bool doWrite = true)
         {
-            if (doWrite)
+            if (false)
             {
                 StreamWriter sw = null;
                 FileStream fs = null;
