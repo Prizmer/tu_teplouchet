@@ -157,9 +157,13 @@ namespace teplouchetapp
         DataTable dt = new DataTable("meters");
         public string worksheetName = "Лист1";
 
-
+        //список, хранящий номера параметров в перечислении Params драйвера
+        //целесообразно его сделать сдесь, так как кол-во считываемых значений зависит от кол-ва колонок
+        List<int> paramCodes = null;
         private void createMainTable(ref DataTable dt)
         {
+            paramCodes = new List<int>();
+
             //creating columns for internal data table
             DataColumn column = dt.Columns.Add();
             column.DataType = typeof(string);
@@ -178,33 +182,33 @@ namespace teplouchetapp
 
             column = dt.Columns.Add();
             column.DataType = typeof(string);
-            column.Caption = "Энергия (ВтЧ)";
+            column.Caption = "Энергия (КВтЧ)";
             column.ColumnName = "colEnergy";
+            paramCodes.Add(0);
 
             column = dt.Columns.Add();
             column.DataType = typeof(string);
             column.Caption = "Объем (м3)";
             column.ColumnName = "colVolume";
-
-            column = dt.Columns.Add();
-            column.DataType = typeof(string);
-            column.Caption = "Мощность (Вт)";
-            column.ColumnName = "colPower";
+            paramCodes.Add(1);
 
             column = dt.Columns.Add();
             column.DataType = typeof(string);
             column.Caption = "Т.входа (С)";
             column.ColumnName = "colTempInp";
+            paramCodes.Add(5);
 
             column = dt.Columns.Add();
             column.DataType = typeof(string);
             column.Caption = "Т.выхода (С)";
             column.ColumnName = "colTempOutp";
+            paramCodes.Add(6);
 
             column = dt.Columns.Add();
             column.DataType = typeof(string);
             column.Caption = "Вр.работы (Ч)";
             column.ColumnName = "colTimeOn";
+            paramCodes.Add(2);
 
             DataRow captionRow = dt.NewRow();
             for (int i = 0; i < dt.Columns.Count; i++)
@@ -349,53 +353,45 @@ namespace teplouchetapp
             int columnIndexResult = 2;
 
             List<string> factoryNumbers = new List<string>();
-            if (Vp.OpenPort())
+            for (int i = 1; i < dt.Rows.Count; i++)
             {
-                for (int i = 1; i < dt.Rows.Count; i++)
+                int tmpNumb = 0;
+                object oColFactory = dt.Rows[i][columnIndexFactory];
+                object oColResult = dt.Rows[i][columnIndexResult];
+
+                //check if already polled
+                bool tmpResState = false;
+                if (bPollOnlyOffline && bool.TryParse(oColResult.ToString(), out tmpResState) && tmpResState)
                 {
-                    int tmpNumb = 0;
-                    object oColFactory = dt.Rows[i][columnIndexFactory];
-                    object oColResult = dt.Rows[i][columnIndexResult];
+                    continue;
+                }
 
-                    //check if already polled
-                    bool tmpResState = false;
-                    if (bPollOnlyOffline && bool.TryParse(oColResult.ToString(), out tmpResState) && tmpResState)
+
+                if (oColFactory != null)
+                {
+                    if (int.TryParse(oColFactory.ToString(), out tmpNumb))
                     {
-                        continue;
-                    }
-
-
-                    if (oColFactory != null)
-                    {
-                        if (int.TryParse(oColFactory.ToString(), out tmpNumb))
+                        if (Meter.SelectBySecondaryId(tmpNumb))
                         {
-                            if (Meter.SelectBySecondaryId(tmpNumb))
-                            {
-                                dt.Rows[i][columnIndexResult] = true;
-                            }
-                            else
-                            {
-                                dt.Rows[i][columnIndexResult] = false;
-                            }
+                            dt.Rows[i][columnIndexResult] = true;
                         }
-                    }
-
-                    Invoke(meterPinged);
-                    Meter.UnselectAllMeters();
-
-                    if (bStopProcess)
-                    {
-                        bStopProcess = false;
-                        break;
+                        else
+                        {
+                            dt.Rows[i][columnIndexResult] = false;
+                        }
                     }
                 }
 
-                Vp.ClosePort();
+                Invoke(meterPinged);
+                Meter.UnselectAllMeters();
+
+                if (bStopProcess)
+                {
+                    bStopProcess = false;
+                    break;
+                }
             }
-            else
-            {
-                Invoke(portProblems);
-            }
+            
 
             Invoke(pollingEnd);
         }
@@ -407,62 +403,56 @@ namespace teplouchetapp
             int columnIndexResult = 2;
 
             List<string> factoryNumbers = new List<string>();
-            if (Vp.OpenPort())
+            for (int i = 1; i < dt.Rows.Count; i++)
             {
-                for (int i = 1; i < dt.Rows.Count; i++)
+                int tmpNumb = 0;
+                object o = dt.Rows[i][columnIndexFactory];
+                object oColResult = dt.Rows[i][columnIndexResult];
+
+                //check if already polled
+                bool tmpResState = false;
+                if (bPollOnlyOffline && bool.TryParse(oColResult.ToString(), out tmpResState) && tmpResState)
                 {
-                    int tmpNumb = 0;
-                    object o = dt.Rows[i][columnIndexFactory];
-                    object oColResult = dt.Rows[i][columnIndexResult];
+                    continue;
+                }
 
-                    //check if already polled
-                    bool tmpResState = false;
-                    if (bPollOnlyOffline && bool.TryParse(oColResult.ToString(), out tmpResState) && tmpResState)
+                if (o != null)
+                {
+                    if (int.TryParse(o.ToString(), out tmpNumb))
                     {
-                        continue;
-                    }
-
-                    if (o != null)
-                    {
-                        if (int.TryParse(o.ToString(), out tmpNumb))
+                        //служит также проверкой связи
+                        if (Meter.SelectBySecondaryId(tmpNumb))
                         {
-                            if (Meter.SelectBySecondaryId(tmpNumb))
+                            List<float> valList = new List<float>();
+                            if (Meter.ReadCurrentValues(paramCodes, out valList))
                             {
-                                Dictionary<string, float> valDict = new Dictionary<string, float>();
-                                if (Meter.ReadCurrentValues(ref valDict))
-                                {
-                                    dt.Rows[i][columnIndexResult + 1] = valDict["energy"];
-                                    dt.Rows[i][columnIndexResult + 2] = valDict["volume"];
-                                    dt.Rows[i][columnIndexResult + 3] = valDict["power"];
-                                    dt.Rows[i][columnIndexResult + 4] = valDict["temp_in"];
-                                    dt.Rows[i][columnIndexResult + 5] = valDict["temp_out"];
-                                    dt.Rows[i][columnIndexResult + 6] = valDict["time_on"];
-                                }
                                 dt.Rows[i][columnIndexResult] = true;
-                            }
-                            else
-                            {
-                                dt.Rows[i][columnIndexResult] = false;
+                                for (int j = 0; j < valList.Count; j++)
+                                    dt.Rows[i][columnIndexResult + 1 + j] = valList[j];
                             }
 
+                            //если тест связи пройден, а текущие не прочитаны, то счетчик на связи
+                            dt.Rows[i][columnIndexResult] = true;
                         }
-                    }
+                        else
+                        {
+                            dt.Rows[i][columnIndexResult] = false;
+                        }
 
-                    Invoke(meterPinged);
-                    Meter.UnselectAllMeters();
-
-                    if (bStopProcess)
-                    {
-                        bStopProcess = false;
-                        break;
                     }
                 }
 
-                Vp.ClosePort();
-            }
-            else
-            {
-                Invoke(portProblems);
+                Invoke(meterPinged);
+                Meter.UnselectAllMeters();
+
+                //должно снизить нагрузку на порт
+                Thread.Sleep(10);
+
+                if (bStopProcess)
+                {
+                    bStopProcess = false;
+                    break;
+                }
             }
 
             Invoke(pollingEnd);
@@ -516,6 +506,12 @@ namespace teplouchetapp
             numericUpDown1.Enabled = false;
             checkBox1.Enabled = false;
 
+            if (paramCodes.Count == 0)
+            {
+                MessageBox.Show("Загрузите исходные данные, список paramCodes пуст");
+                return;
+            }
+
             Thread pingThr = new Thread(pollMeters);
             pingThr.Start((object)dt);
         }
@@ -540,6 +536,31 @@ namespace teplouchetapp
             if (Vp.isOpened())
             {
                 Vp.ClosePort();
+            }
+        }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            richTextBox1.Clear();
+            string str_fact_n = textBox1.Text;
+            int tmpNumb = -1;
+            if (int.TryParse(str_fact_n, out tmpNumb))
+            {
+                //служит также проверкой связи
+                if (Meter.SelectBySecondaryId(tmpNumb))
+                {
+                    string resStr = "Метод драйвера GetAllValues вернул false";
+                    Meter.GetAllValues(out resStr);
+                    richTextBox1.Text = resStr;
+                }
+                else
+                {
+                    richTextBox1.Text = "Связь с прибором " + tmpNumb.ToString() + " НЕ установлена";
+                }
+            }
+            else
+            {
+                richTextBox1.Text = "Невозможно преобразовать серийный номер в число";
             }
         }
 

@@ -18,15 +18,13 @@ namespace teplouchetapp
         
         public teplouchet1()
         {
-            //опишем параметры запроса req_ud2
-            List<RecordDescription> rdList = new List<RecordDescription>();
 
         }
 
         private byte m_addr;
 
-        //private SerialPort m_port;
 
+        /*
         const int REQ_UD2_HEADER_SIZE = 24;
         const int REQ_UD2_DATA_SIZE = 46;
         const int REQ_UD2_ANSW_SIZE = 72;
@@ -47,7 +45,7 @@ namespace teplouchetapp
             public float coeff;
         }
 
-        RecordDescription energy = new RecordDescription(0, 6, 2, 1000);
+        RecordDescription energy = new RecordDescription(0, 6, 2, 1); //k = 1000 (Wh), 1 (kWh)
         RecordDescription volume = new RecordDescription(6, 6, 2, 1);
         RecordDescription time_on = new RecordDescription(12, 6, 2, 1);
         RecordDescription power = new RecordDescription(18, 6, 2, 1000);
@@ -56,7 +54,9 @@ namespace teplouchetapp
         RecordDescription temp_out = new RecordDescription(34, 4, 2, 0.01f);
         RecordDescription temp_diff = new RecordDescription(38, 4, 2, 0.01f);
        // RecordDescription dt = new RecordDescription(40, 4, 2, 1);
+        */
 
+        /*
         bool SendREQ_UD2(ref byte[] data_arr)
         {
             byte cmd = 0x5B;
@@ -92,23 +92,441 @@ namespace teplouchetapp
                 return false;
             }
         }
+        */
 
-        bool SND_NKE(ref bool confirmed)
+        #region Протокол MBUS
+
+        public struct Record
         {
-           byte cmd = 0x40;
-            byte CS = (byte)(cmd + m_addr);
-            
-            byte[] cmdArr = { 0x10, cmd, m_addr, CS, 0x16 };
-            int firstRecordByteIndex = cmdArr.Length + 4 + 3 + 12;
+            public byte DIF;
+            public List<byte> DIFEs;
 
-            byte[] inp = new byte[512];
+            public byte VIF;
+            public List<byte> VIFEs;
+
+            public List<byte> dataBytes;
+
+            public RecordDataType recordType;
+        }
+
+        public enum RecordDataType
+        {
+            NO_DATA = 0,
+            INTEGER = 1,
+            REAL = 2,
+            BCD = 3,
+            VARIABLE_LENGTH = 4,
+            SELECTION_FOR_READOUT = 5,
+            SPECIAL_FUNСTIONS = 6
+        }
+
+        //параметры в порядке как они идут в rsp_ud
+        public enum Params
+        {
+            ENERGY = 0,
+            VOLUME = 1,
+            TIME_ON = 2,
+            POWER = 3,
+            VOLUME_FLOW = 4,
+            TEMP_INP = 5,
+            TEMP_OUTP = 6,
+            TEMP_DIFF = 7,
+            DATE = 8
+        }
+
+        public int getLengthAndTypeFromDIF(byte DIF, out RecordDataType type)
+        {
+            int data = DIF & 0x0F; //00001111b
+            switch (data)
+            {
+                case 0:
+                    {
+                        type = RecordDataType.NO_DATA;
+                        return 0;
+                    }
+                case 1:
+                    {
+                        type = RecordDataType.INTEGER;
+                        return 1;
+                    }
+                case 2:
+                    {
+                        type = RecordDataType.INTEGER;
+                        return 2;
+                    }
+                case 3:
+                    {
+                        type = RecordDataType.INTEGER;
+                        return 3;
+                    }
+                case 4:
+                    {
+                        type = RecordDataType.INTEGER;
+                        return 4;
+                    }
+                case 5:
+                    {
+                        WriteToLog("getLengthAndTypeFromDIF: 5, real");
+                        type = RecordDataType.REAL;
+                        return 4;
+                    }
+                case 6:
+                    {
+                        type = RecordDataType.INTEGER;
+                        return 6;
+                    }
+                case 7:
+                    {
+                        type = RecordDataType.INTEGER;
+                        return 8;
+                    }
+                case 8:
+                    {
+                        //selection for readout
+                        WriteToLog("getLengthAndTypeFromDIF: 8, selection for readout");
+                        type = RecordDataType.SELECTION_FOR_READOUT;
+                        return 0;
+                    }
+                case 9:
+                    {
+                        type = RecordDataType.BCD;
+                        return 1;
+                    }
+                case 10:
+                    {
+                        type = RecordDataType.BCD;
+                        return 2;
+                    }
+                case 11:
+                    {
+                        type = RecordDataType.BCD;
+                        return 3;
+                    }
+                case 12:
+                    {
+                        type = RecordDataType.BCD;
+                        return 4;
+                    }
+                case 13:
+                    {
+                        WriteToLog("getLengthAndTypeFromDIF: 13, variable length");
+                        type = RecordDataType.VARIABLE_LENGTH;
+                        return -1;
+                    }
+                case 14:
+                    {
+                        type = RecordDataType.BCD;
+                        return 6;
+                    }
+                case 15:
+                    {
+                        WriteToLog("getLengthAndTypeFromDIF: 15, special functions");
+                        type = RecordDataType.SPECIAL_FUNСTIONS;
+                        return -1;
+                    }
+                default:
+                    {
+                        type = RecordDataType.NO_DATA;
+                        return -1;
+                    }
+            }
+        }
+
+        private bool getRecordValueByParam(Params param, List<Record> records, out float value)
+        {
+            if (records == null && records.Count == 0)
+            {
+                WriteToLog("getRecordValueByParam: список записей пуст");
+                value = 0f;
+                return false;
+            }
+
+            if ((int)param >= records.Count)
+            {
+                WriteToLog("getRecordValueByParam: параметра не существует в списке записей: " + param.ToString());
+                value = 0f;
+                return false;
+            }
+
+            Record record = records[(int)param];
+            byte[] data = record.dataBytes.ToArray();
+            Array.Reverse(data);
+            string hex_str = BitConverter.ToString(data).Replace("-", string.Empty);
+
+            //коэффициент, на который умножается число, полученное со счетчика
+            float COEFFICIENT = 1;
+            switch (param)
+            {
+                case Params.ENERGY:
+                    {
+                        //коэффициент, согласно документации MBUS, после применения дает значение в Wh
+                        //COEFFICIENT = (float)Math.Pow(10, 3);
+                        //однако, счетчик показывает значения в KWh
+                        COEFFICIENT = 1;
+                        break;
+                    }
+                case Params.VOLUME_FLOW:
+                    {
+                        COEFFICIENT = (float)Math.Pow(10, -3);
+                        break;
+                    }
+                case Params.TEMP_INP:
+                case Params.TEMP_OUTP:
+                case Params.TEMP_DIFF:
+                    {
+                        COEFFICIENT = (float)Math.Pow(10, -2);
+                        break;
+                    }
+                default:
+                    {
+                        break;
+                    }
+            }
+
+            if (!float.TryParse(hex_str, out value))
+            {
+                value = 0f;
+
+                string mgs = String.Format("Ошибка преобразования параметра {0} во float, исходная строка: {1}", param.ToString(), hex_str);
+                WriteToLog(mgs);
+
+                return false;
+            }
+            else
+            {
+                value *= COEFFICIENT;
+                return true;
+            }
+        }
+
+        public bool getRecordValueByParam(Params param, out float value)
+        {
+            List<Record> records = new List<Record>();
+            value = 0f;
+
+            if (!GetRecordsList(out records))
+            {
+                WriteToLog("getRecordValueByParam: can't split records");
+                return false;
+            }
+
+            float res_val = 0f;
+            if (getRecordValueByParam(param, records, out res_val))
+            {
+                value = res_val;
+                return true;
+            }
+            else
+            {
+                WriteToLog("getRecordValueByParam: can't getRecordValueByParam");
+                return false;
+            }
+        }
+
+        public bool GetRecordsList(out List<Record> records)
+        {
+            records = new List<Record>();
+
+            List<byte> answerBytes = new List<byte>();
+            if (!SendREQ_UD2(out answerBytes) || answerBytes.Count == 0)
+            {
+                WriteToLog("ReadSerialNumber: не получены байты ответа");
+                return false;
+            }
+
+            if (!SplitRecords(answerBytes, ref records) || records.Count == 0)
+            {
+                WriteToLog("ReadSerialNumber: не удалось разделить запись");
+                return false;
+            }
+
+            return true;
+        }
+
+
+        //возвращает true если установлен extension bit, позволяет опрелелить, есть ли DIFE/VIFE
+        private bool hasExtension(byte b)
+        {
+            byte EXTENSION_BIT_MASK = Convert.ToByte("10000000", 2);
+            int extensionBit = (b & EXTENSION_BIT_MASK) >> 7;
+            if (extensionBit == 1)
+                return true;
+            else
+                return false;
+        }
+
+        public bool SplitRecords(List<byte> recordsBytes, ref List<Record> recordsList)
+        {
+            recordsList = new List<Record>();
+            if (recordsBytes.Count == 0) return false;
+
+            bool doStop = false;
+            int index = 0;
+
+            //переберем записи
+            while (!doStop)
+            {
+                Record tmpRec = new Record();
+                tmpRec.DIFEs = new List<byte>();
+                tmpRec.VIFEs = new List<byte>();
+                tmpRec.dataBytes = new List<byte>();
+
+                tmpRec.DIF = recordsBytes[index];
+
+                //определим длину и тип данных
+                int dataLength = getLengthAndTypeFromDIF(tmpRec.DIF, out tmpRec.recordType);
+
+                if (hasExtension(tmpRec.DIF))
+                {
+                    //переход к байту DIFE
+                    index++;
+                    byte DIFE = recordsBytes[index];
+                    tmpRec.DIFEs.Add(DIFE);
+
+                    while (hasExtension(DIFE))
+                    {
+                        //перейдем к следующему DIFE
+                        index++;
+                        DIFE = recordsBytes[index];
+                        tmpRec.DIFEs.Add(DIFE);
+                    }
+                }
+
+                //переход к VIF
+                index++;
+                tmpRec.VIF = recordsBytes[index];
+
+                //проверим на наличие специального VIF, после которого следует ASCII строка
+                if (tmpRec.VIF == Convert.ToByte("11111100", 2))
+                {
+                    index++;
+                    int str_length = recordsBytes[index];
+                    index += str_length;
+                }
+
+                if (hasExtension(tmpRec.VIF))
+                {
+                    //переход к VIFE
+                    index++;
+                    byte VIFE = recordsBytes[index];
+                    tmpRec.VIFEs.Add(VIFE);
+
+                    while (hasExtension(VIFE))
+                    {
+                        //перейдем к следующему VIFE
+                        index++;
+                        VIFE = recordsBytes[index];
+                        tmpRec.VIFEs.Add(VIFE);
+                    }
+                }
+
+                //переход к первому байту данных
+                index++;
+                int dataCnt = 0;
+                while (dataCnt < dataLength)
+                {
+                    tmpRec.dataBytes.Add(recordsBytes[index]);
+                    index++;
+                    dataCnt++;
+                }
+
+                recordsList.Add(tmpRec);
+                if (index >= recordsBytes.Count - 1) doStop = true;
+            }
+
+            return true;
+        }
+        public bool SendREQ_UD2(out List<byte> recordsBytesList)
+        {
+            recordsBytesList = new List<byte>();
+
+            /*данные проходящие по протоколу m-bus не нужно шифровать, а также не нужно
+             применять отрицание для зарезервированных символов*/
+            byte cmd = 0x7b;
+            byte CS = (byte)(cmd + m_addr);
+
+            byte[] cmdArr = { 0x10, cmd, m_addr, CS, 0x16 };
+            byte[] inp = new byte[256];
+
             try
             {
-                int readBytes = m_vport.WriteReadData(findPackageSign, cmdArr, ref inp, cmdArr.Length, -1);
-                if (inp[readBytes-1] == 0xE5)
-                    confirmed = true;
-                else
-                    confirmed = false;
+                //режим, когда незнаем сколько байт нужно принять
+                m_vport.WriteReadData(findPackageSign, cmdArr, ref inp, cmdArr.Length, -1);
+
+                string answ_str = "";
+                foreach (byte b in inp)
+                    answ_str += Convert.ToString(b, 16) + " ";
+                WriteToLog(answ_str);
+
+                if (inp.Length < 6)
+                {
+                    WriteToLog("SendREQ_UD2: Длина корректного ответа не может быть меньше 5 байт: " + answ_str);
+                    return false;
+                }
+
+                int firstAnswerByteIndex = -1;
+                int byteCIndex = -1;
+                //определим индекс первого байта С
+                for (int i = 0; i < inp.Length; i++)
+                {
+                    int j = i + 3;
+                    if (inp[i] == 0x68 && j < inp.Length && inp[j] == 0x68)
+                    {
+                        firstAnswerByteIndex = i;
+                        byteCIndex = ++j;
+                    }
+                }
+
+                if (firstAnswerByteIndex == -1)
+                {
+                    WriteToLog("SendREQ_UD2: не определено начало ответа 0x68, firstAnswerByteIndex: " + firstAnswerByteIndex.ToString());
+                    return false;
+                }
+
+                //определим длину данных ответа
+                byte dataLength = inp[firstAnswerByteIndex + 1];
+                if (dataLength != inp[firstAnswerByteIndex + 2])
+                {
+                    WriteToLog("SendREQ_UD2: не определена длина данных L, dataLength");
+                    return false;
+                }
+
+
+                byte C = inp[byteCIndex];
+                byte A = inp[byteCIndex + 1]; //адрес прибора 
+                byte CI = inp[byteCIndex + 2]; //тип ответа, если 72h то с переменной длиной
+
+                if (CI != 0x72)
+                {
+                    WriteToLog("SendREQ_UD2: счетчик должен ответить сообщением с переменной длиной, CI = 0x72");
+                    return false;
+                }
+
+                int firstFixedDataHeaderIndex = byteCIndex + 3;
+                byte[] factoryNumberBytes = new byte[4];
+                Array.Copy(inp, firstFixedDataHeaderIndex, factoryNumberBytes, 0, factoryNumberBytes.Length);
+                Array.Reverse(factoryNumberBytes);
+                //серийный номер полученный из заголовка может быть изменен, достовернее серийник, полученный из блока записей
+                string factoryNumber = BitConverter.ToString(factoryNumberBytes);
+
+                //12 байт - размер заголовка, индекс первого байта первой записи
+                int firstRecordByteIndex = firstFixedDataHeaderIndex + 12;
+
+                //байт окончания сообщения
+                int lastByteIndex = byteCIndex + dataLength + 1;
+                int byteCSIndex = byteCIndex + dataLength;
+                if (inp[lastByteIndex] != 0x16)
+                {
+                    WriteToLog("SendREQ_UD2: не найден байт окончания сообщения 0х16");
+                    return false;
+                }
+
+                //индекс последнего байта последнегй записи
+                int lastRecordByteIndex = lastByteIndex - 2;
+
+                //поместим байты записей в отдельный список
+                for (int i = firstRecordByteIndex; i <= lastRecordByteIndex; i++)
+                    recordsBytesList.Add(inp[i]);
 
                 return true;
             }
@@ -117,8 +535,36 @@ namespace teplouchetapp
                 WriteToLog("SendREQ_UD2: " + ex.Message);
                 return false;
             }
-
         }
+
+        //Служебный метод, опрашивающий счетчик для всех элементов перечисления Params,
+        //и возвращающих ответ в виде строки. Примняется в тестовой утилите драйвера elf.
+        public bool GetAllValues(out string res)
+        {
+            res = "Ошибка";
+            List<Record> records = new List<Record>();
+            if (!GetRecordsList(out records))
+            {
+                WriteToLog("GetAllValues: can't split records");
+                return false;
+            }
+
+            res = "";
+            foreach (Params p in Enum.GetValues(typeof(Params)))
+            {
+                float val = -1f;
+                string s = "false;";
+
+                if (getRecordValueByParam(p, records, out val))
+                    s = val.ToString();
+
+                res += String.Format("{0}: {1}\n", p.ToString(), s);
+            }
+
+            return true;
+        }
+
+        #endregion
 
 
         public bool ToBcd(int value, ref byte[] byteArr)
@@ -141,8 +587,13 @@ namespace teplouchetapp
             return true;
         }
 
+        //используется для вывода в лог
+        public string current_secondary_id_str = "серийный номер не определен";
+        //выделяет счетчик по серийнику и возвращает признак того что прибор на связи
         public bool SelectBySecondaryId(int factoryNumber)
         {
+            current_secondary_id_str = factoryNumber.ToString();
+
             byte cmd = 0x53;
             byte CI = 0x52;
 
@@ -177,6 +628,34 @@ namespace teplouchetapp
                 return false;
             }
         }
+
+        //сбрасывает выделение конкретного счптчика
+        bool SND_NKE(ref bool confirmed)
+        {
+            byte cmd = 0x40;
+            byte CS = (byte)(cmd + m_addr);
+
+            byte[] cmdArr = { 0x10, cmd, m_addr, CS, 0x16 };
+            int firstRecordByteIndex = cmdArr.Length + 4 + 3 + 12;
+
+            byte[] inp = new byte[512];
+            try
+            {
+                int readBytes = m_vport.WriteReadData(findPackageSign, cmdArr, ref inp, cmdArr.Length, -1);
+                if (inp[readBytes - 1] == 0xE5)
+                    confirmed = true;
+                else
+                    confirmed = false;
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                WriteToLog("SendREQ_UD2: " + ex.Message);
+                return false;
+            }
+
+        }
         public bool UnselectAllMeters()
         {
             bool res = false;
@@ -186,80 +665,53 @@ namespace teplouchetapp
         }
 
 
-
-        int findPackageSign(Queue<byte> queue)
-        {
-            return 0;
-        }
-
-        public bool OpenLinkCanal()
-        {
-            bool confirmation = false;
-            if (!SND_NKE(ref confirmation))
-                return false;
-
-            if (!confirmation) return false;
-
-            return true;
-        }
-
         /// <summary>
-        /// Чтение текущих значений
-        /// </summary>
-        /// <param name="values">Возвращаемые данные</param>
-        /// <returns></returns>
-        public bool ReadCurrentValues(ushort param, ushort tarif, ref float recordValue)
-        {
-            switch (param)
-            {
-                case 1: return parseParam(energy, ref recordValue);
-                case 2: return parseParam(volume, ref recordValue);
-                case 3: return parseParam(power, ref recordValue); 
-                case 4: return parseParam(volflow, ref recordValue); //volume flow (m3*h)
-                case 5: return parseParam(time_on, ref recordValue);
-                case 6: return parseParam(temp_in, ref recordValue);
-                case 7: return parseParam(temp_out, ref recordValue);
-                default:
-                    {
-                        WriteToLog("ReadCurrentValues: для параметра " + param.ToString() + " нет обработчика");
-                        return false;
-                    }
-            }
-        }
-
-        /// <summary>
-        /// Чтение текущих значений (всех)
+        /// Чтение списка текущих значений для драйвера теплоучет
         /// </summary>
         /// <param name="valDict"></param>
         /// <returns></returns>
-        public bool ReadCurrentValues(ref Dictionary<string, float> valDict)
+        public bool ReadCurrentValues(List<int> paramCodes, out List<float> values)
         {
-            valDict = new Dictionary<string, float>(6);
+            values = new List<float>();
+            List<Record> records = new List<Record>();
+            List<byte> answerBytes = new List<byte>();
 
-            byte[] data = null;
-            if (SendREQ_UD2(ref data))
+            if (!SendREQ_UD2(out answerBytes) || answerBytes.Count == 0)
             {
-                float[] tmpVal = new float[6];
-                if (!parseParam(data, energy, ref tmpVal[0])) tmpVal[0] = -1;
-                if (!parseParam(data, volume, ref tmpVal[1])) tmpVal[1] = -1;
-                if (!parseParam(data, power, ref tmpVal[2])) tmpVal[2] = -1;
-                if (!parseParam(data, temp_in, ref tmpVal[3])) tmpVal[3] = -1;
-                if (!parseParam(data, temp_out, ref tmpVal[4])) tmpVal[4] = -1;
-                if (!parseParam(data, time_on, ref tmpVal[5])) tmpVal[5] = -1;
-
-                valDict.Add("energy", tmpVal[0]);
-                valDict.Add("volume", tmpVal[1]);
-                valDict.Add("power", tmpVal[2]);
-                valDict.Add("temp_in", tmpVal[3]);
-                valDict.Add("temp_out", tmpVal[4]);
-                valDict.Add("time_on", tmpVal[5]);
-
-                return true;
-            }
-            else
-            {
+                WriteToLog("ReadCurrentValues: не получены байты ответа");
                 return false;
             }
+
+            if (!SplitRecords(answerBytes, ref records) || records.Count == 0)
+            {
+                WriteToLog("ReadCurrentValues: не удалось разделить запись");
+                return false;
+            }
+
+            foreach (int p in paramCodes)
+            {
+                float tmpVal = -1f;
+                values.Add(tmpVal);
+
+                if (!Enum.IsDefined(typeof(Params), p))
+                {
+                    WriteToLog("ReadCurrentValues не удалось найти в перечислении paramCodes параметр " + p.ToString());
+                    continue;
+                }
+
+                Params tmpP = (Params)p;
+
+                //не путать с перегруженным аналогом
+                if (!getRecordValueByParam(tmpP, records, out tmpVal))
+                {
+                    WriteToLog("ReadCurrentValues не удалось выполнить getRecordValueByParam для " + tmpP);
+                    continue;
+                }
+
+                values[values.Count - 1] = tmpVal;
+            }
+
+            return true;
         }
 
         #region Расчет контрольной суммы
@@ -314,59 +766,26 @@ namespace teplouchetapp
 
         #endregion
 
-        bool parseParam(RecordDescription rd, ref float value)
+        #region Методы поддержки интерфейса, неиспользуемые
+
+        public bool OpenLinkCanal()
         {
-            byte[] data = null;
-            if (SendREQ_UD2(ref data))
-            {
-                /*энергия записана в 6ти кодебайтах в hex-dec*/
-                byte[] energyBytes = new byte[rd.size];
-                Array.Copy(data, rd.index, energyBytes, 0, rd.size);
-                Array.Reverse(energyBytes, rd.cmd_size, energyBytes.Length - rd.cmd_size);
-
-                string hex_str = BitConverter.ToString(energyBytes, rd.cmd_size).Replace("-", string.Empty);
-
-                float temp_val = (float)Convert.ToDouble(hex_str) * rd.coeff;
-
-                value = temp_val;
-                return true;
-            }
-            else
-            {
+            /*
+            bool confirmation = false;
+            if (!SND_NKE(ref confirmation))
                 return false;
-            }
-        }
 
-        bool parseParam(byte[] data, RecordDescription rd, ref float value)
-        {
-            /*энергия записана в 6ти кодебайтах в hex-dec*/
-            byte[] energyBytes = new byte[rd.size];
-            Array.Copy(data, rd.index, energyBytes, 0, rd.size);
-            Array.Reverse(energyBytes, rd.cmd_size, energyBytes.Length - rd.cmd_size);
+            if (!confirmation) return false;
 
-            string hex_str = BitConverter.ToString(energyBytes, rd.cmd_size).Replace("-", string.Empty);
-
-            float temp_val = (float)Convert.ToDouble(hex_str) * rd.coeff;
-
-            value = temp_val;
             return true;
+             * */
+            WriteToLog("OpenLinkCanal() предназначен для СО и не реализован для драйвера");
+            return false;
         }
-
 
         public bool ReadMonthlyValues(DateTime dt, ushort param, ushort tarif, ref float recordValue)
         {
-            if (dt.Date.Day == 1)
-            {
-                try
-                {
-                    ReadCurrentValues(param, tarif, ref recordValue);
-                    return true;
-                }
-                catch (Exception ex)
-                {
-                    return false;
-                }
-            }
+            WriteToLog("ReadMonthlyValues(DateTime dt, ushort param, ushort tarif, ref float recordValue) не реализован для драйвера");
             return false;
         }
 
@@ -380,22 +799,26 @@ namespace teplouchetapp
         /// <param name="recordValue"></param>
         /// <returns></returns>
         public bool ReadDailyValues(DateTime dt, ushort param, ushort tarif, ref float recordValue)
-        {    
-            if (dt.TimeOfDay.Hours == 0)
-            {
-                try
-                {
-                    ReadCurrentValues(param, tarif, ref recordValue);
-                    return true;
-                }
-                catch (Exception ex)
-                {
-                    return false;
-                }
-            }
+        {
+            WriteToLog("ReadDailyValues(DateTime dt, ushort param, ushort tarif, ref float recordValue) не реализован для драйвера");
             return false;
         }
 
+        /// <summary>
+        /// Чтение текущих значений для СО по параметрам
+        /// </summary>
+        /// <param name="values">Возвращаемые данные</param>
+        /// <returns></returns>
+        public bool ReadCurrentValues(ushort param, ushort tarif, ref float recordValue)
+        {
+            WriteToLog("ReadCurrentValues(ushort param, ushort tarif, ref float recordValue) не реализован для драйвера");
+            return false;
+        }
+
+        int findPackageSign(Queue<byte> queue)
+        {
+            return 0;
+        }
 
         public bool SyncTime(DateTime dt)
         {
@@ -407,19 +830,15 @@ namespace teplouchetapp
             return false;
         }
 
-
         public bool ReadDailyValues(uint recordId, ushort param, ushort tarif, ref float recordValue)
         {
             return false;
         }
 
-
-
         public bool ReadSliceArrInitializationDate(ref DateTime lastInitDt)
         {
             return false;
         }
-
 
         public bool ReadHalfAnHourValues(DateTime dt, ushort param, ushort tarif, ref float recordValue)
         {
@@ -430,6 +849,8 @@ namespace teplouchetapp
         {
             throw new NotImplementedException();
         }
+
+        #endregion
     }
 
 

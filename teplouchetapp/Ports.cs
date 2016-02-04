@@ -317,32 +317,16 @@ namespace teplouchetapp
             }
         }
 
-        /// <summary>
-        /// Производит запись команды в COM порт и последующее чтение входных данных с учетом особенностей 
-        /// всех драйверов
-        /// </summary>
-        /// <param name="func">Метод возвращающий int значение начала полезных данных в ответе счетчика</param>
-        /// <param name="out_buffer">Данные отправляемые на счетчик</param>
-        /// <param name="in_buffer">Полезные данные выделенные из ответа счетчика</param>
-        /// <param name="out_length">Длина полезных данных в массиве отправляемых на счетчик данных</param>
-        /// <param name="target_in_length">Ожидаемая длина полезных данных ответа счетчика. -1 если все пришедшие данные считаются полезными,
-        /// 0 - если для выделения полезных данных требуется использовать необязательные параметры.</param>
-        /// <param name="pos_count_data_size">Первый байт полезных данных ответа счетчика</param>
-        /// <param name="size_data">Размер полезных данных ответа</param>
-        /// <param name="header_size">Размер заголовка</param>
-        /// <returns>int количество полезных данных ответа</returns>
         public int WriteReadData(FindPacketSignature func, byte[] out_buffer, ref byte[] in_buffer, int out_length, int target_in_length,
             uint pos_count_data_size = 0, uint size_data = 0, uint header_size = 0)
         {
             int reading_size = 0;
-            if (isOpened())
+
+            if (OpenPort())
             {
                 //очередь для поддержки делегатов в старых драйверах
                 Queue<byte> reading_queue = new Queue<byte>(8192);
-                //список считываемых байт
                 List<byte> readBytesList = new List<byte>(8192);
-
-                #region БЛОК ЗАПИСИ В ПОРТ
 
                 try
                 {
@@ -352,15 +336,11 @@ namespace teplouchetapp
                 catch (Exception ex)
                 {
                     WriteToLog("WriteReadData: Write to port error: " + ex.Message);
-                    return 0;
                 }
 
-                #endregion
-
-                #region БЛОК ЧТЕНИЯ ИЗ ПОРТА
 
                 Thread.Sleep(100);
-                int elapsed_time_count = 100;
+                uint elapsed_time_count = 100;
 
                 while (elapsed_time_count <= m_read_timeout)
                 {
@@ -369,7 +349,7 @@ namespace teplouchetapp
                         try
                         {
                             byte[] tmp_buff = new byte[m_Port.BytesToRead];
-                            int read_bytes = m_Port.Read(tmp_buff, 0, tmp_buff.Length);
+                            int readed_bytes = m_Port.Read(tmp_buff, 0, tmp_buff.Length);
 
                             readBytesList.AddRange(tmp_buff);
                         }
@@ -383,9 +363,6 @@ namespace teplouchetapp
                     Thread.Sleep(100);
                 }
 
-                #endregion
-
-                #region БЛОК РАЗБОРА ДАННЫХ
 
                 /*TODO: Откуда взялась константа 4, почему 4?*/
                 if (readBytesList.Count >= 4)
@@ -405,156 +382,53 @@ namespace teplouchetapp
                         }
 
                         //оставшиеся данные преобразуем обратно в массив
-                        reading_size = reading_queue.Count;
-                        byte[] temp_buffer = reading_queue.ToArray();
+                        byte[] temp_buffer = new byte[reading_size = reading_queue.Count];
+
+                        //WriteToLog("reading_queue.Count: " + reading_size.ToString());
+
+                        temp_buffer = reading_queue.ToArray();
                         //WriteToLog(BitConverter.ToString(temp_buffer));
 
-
+                        //если длина полезных данных ответа определена как 0, произведем расчет по необязательнм параметрам
                         if (target_in_length == 0)
                         {
-                            //если длина полезных данных ответа определена как 0, произведем расчет по необязательнм параметрам
                             if (reading_size > pos_count_data_size)
                                 target_in_length = Convert.ToInt32(temp_buffer[pos_count_data_size] * size_data + header_size);
-                        } 
-                        else if (target_in_length == -1) 
+                        }
+
+                        if (target_in_length == -1)
                         {
-                            //если как -1, считаем, что все данные пришедшие в буфер полезные
+                            target_in_length = reading_queue.Count;
+                            reading_size = target_in_length;
                             in_buffer = new byte[reading_size];
 
                             for (int i = 0; i < in_buffer.Length; i++)
                                 in_buffer[i] = temp_buffer[i];
 
+
+                            ClosePort();
                             return reading_size;
                         }
-                        else if (target_in_length > 0 && reading_size >= target_in_length)
+
+                        if (target_in_length > 0 && reading_size >= target_in_length)
                         {
                             reading_size = target_in_length;
                             for (int i = 0; i < target_in_length && i < in_buffer.Length; i++)
                             {
                                 in_buffer[i] = temp_buffer[i];
                             }
-                            return reading_size;
                         }
-
                     }
                 }
-
-                #endregion
             }
             else
             {
                 WriteToLog("Open port Error");
             }
 
+            ClosePort();
             return reading_size;
         }
-
-        /// <summary>
-        /// Test version for teplouchet meters
-        /// </summary>
-        /// <param name="out_buffer"></param>
-        /// <param name="in_buffer"></param>
-        /// <param name="target_in_length"></param>
-        /// <returns></returns>
-        public int WriteReadData(byte[] out_buffer, ref byte[] in_buffer, int target_in_length = -1)
-        {
-            int reading_size = 0;
-            if (isOpened()) ClosePort();
-            if (OpenPort())
-            {
-                //очередь для поддержки делегатов в старых драйверах
-                Queue<byte> reading_queue = new Queue<byte>(8192);
-                //список считываемых байт
-                List<byte> readBytesList = new List<byte>(8192);
-
-                #region БЛОК ЗАПИСИ В ПОРТ
-
-                try
-                {
-                    //пишем в порт команду, ограниченную out_length
-                    m_Port.Write(out_buffer, 0, out_buffer.Length);
-                }
-                catch (Exception ex)
-                {
-                    WriteToLog("WriteReadData: Write to port error: " + ex.Message);
-                    return 0;
-                }
-
-                #endregion
-
-                #region БЛОК ЧТЕНИЯ ИЗ ПОРТА
-
-                Thread.Sleep(100);
-                int elapsed_time_count = 100;
-
-                while (elapsed_time_count <= m_read_timeout)
-                {
-                    if (m_Port.BytesToRead > 0)
-                    {
-                        try
-                        {
-                            byte[] tmp_buff = new byte[m_Port.BytesToRead];
-                            m_Port.Read(tmp_buff, 0, tmp_buff.Length);
-
-                            readBytesList.AddRange(tmp_buff);
-                        }
-                        catch (Exception ex)
-                        {
-                            WriteToLog("WriteReadData: Read from port error: " + ex.Message);
-                        }
-                    }
-
-                    elapsed_time_count += 100;
-                    Thread.Sleep(100);
-                }
-
-                #endregion
-
-                #region БЛОК РАЗБОРА ДАННЫХ
-
-                if (readBytesList.Count >= 1)
-                {
-
-                    //TODO: узнать как переводится очередь в массив и избавиться от нее
-                    for (int i = 0; i < readBytesList.Count; i++)
-                        reading_queue.Enqueue(readBytesList[i]);
-                    reading_size = reading_queue.Count;
-                    byte[] temp_buffer = reading_queue.ToArray();
-
-
-                    if (target_in_length == -1)
-                        {
-                            //если как -1, считаем, что все данные пришедшие в буфер полезные
-                            in_buffer = new byte[reading_size];
-
-                            for (int i = 0; i < in_buffer.Length; i++)
-                                in_buffer[i] = temp_buffer[i];
-
-                            return reading_size;
-                        }
-                        else if (target_in_length > 0 && reading_size >= target_in_length)
-                        {
-                            reading_size = target_in_length;
-                            for (int i = 0; i < target_in_length && i < in_buffer.Length; i++)
-                            {
-                                in_buffer[i] = temp_buffer[i];
-                            }
-                            return reading_size;
-                        }
-                }
-                #endregion
-
-                ClosePort();
-            }
-            else
-            {
-                WriteToLog("Open port Error");
-                return 0;
-            }
-
-            return reading_size;
-        }
-
 
         public void WriteToLog(string str)
         {
