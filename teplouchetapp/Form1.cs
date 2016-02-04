@@ -557,16 +557,24 @@ namespace teplouchetapp
             bPollOnlyOffline = checkBox1.Checked;
         }
 
+
+        private void CloseApp(object o, EventArgs e)
+        {
+            if (Vp.isOpened())
+                Vp.ClosePort();
+
+            Application.Exit();
+        }
+
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
-            bStopProcess = true;
-            if (pingThr != null && pingThr.IsAlive)
-                pingThr.Join();
-
-            if (Vp.isOpened())
+            if (bStopProcess == false)
             {
-                Vp.ClosePort();
+                e.Cancel = true;
+                bStopProcess = true;
+                pollingEnd += new EventHandler(CloseApp);
             }
+
         }
 
         private void button4_Click(object sender, EventArgs e)
