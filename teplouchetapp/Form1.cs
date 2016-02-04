@@ -346,6 +346,10 @@ namespace teplouchetapp
             pingThr.Start((object)dt);
         }
 
+
+        const string METER_IS_ONLINE = "ОК";
+        const string METER_IS_OFFLINE = "Нет связи";
+
         private void pingMeters(Object metersDt)
         {
             DataTable dt = (DataTable)metersDt;
@@ -360,8 +364,7 @@ namespace teplouchetapp
                 object oColResult = dt.Rows[i][columnIndexResult];
 
                 //check if already polled
-                bool tmpResState = false;
-                if (bPollOnlyOffline && bool.TryParse(oColResult.ToString(), out tmpResState) && tmpResState)
+                if (bPollOnlyOffline && (oColResult.ToString() == METER_IS_ONLINE))
                 {
                     continue;
                 }
@@ -373,11 +376,11 @@ namespace teplouchetapp
                     {
                         if (Meter.SelectBySecondaryId(tmpNumb))
                         {
-                            dt.Rows[i][columnIndexResult] = true;
+                            dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
                         }
                         else
                         {
-                            dt.Rows[i][columnIndexResult] = false;
+                            dt.Rows[i][columnIndexResult] = METER_IS_OFFLINE;
                         }
                     }
                 }
@@ -410,8 +413,7 @@ namespace teplouchetapp
                 object oColResult = dt.Rows[i][columnIndexResult];
 
                 //check if already polled
-                bool tmpResState = false;
-                if (bPollOnlyOffline && bool.TryParse(oColResult.ToString(), out tmpResState) && tmpResState)
+                if (bPollOnlyOffline && (oColResult.ToString() == METER_IS_ONLINE))
                 {
                     continue;
                 }
@@ -426,19 +428,18 @@ namespace teplouchetapp
                             List<float> valList = new List<float>();
                             if (Meter.ReadCurrentValues(paramCodes, out valList))
                             {
-                                dt.Rows[i][columnIndexResult] = true;
+                                dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
                                 for (int j = 0; j < valList.Count; j++)
                                     dt.Rows[i][columnIndexResult + 1 + j] = valList[j];
                             }
 
                             //если тест связи пройден, а текущие не прочитаны, то счетчик на связи
-                            dt.Rows[i][columnIndexResult] = true;
+                            dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
                         }
                         else
                         {
-                            dt.Rows[i][columnIndexResult] = false;
+                            dt.Rows[i][columnIndexResult] = METER_IS_OFFLINE;
                         }
-
                     }
                 }
 

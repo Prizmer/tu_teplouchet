@@ -23,15 +23,15 @@ namespace teplouchetapp
             if (doWrite)
             {
                 StreamWriter sw = null;
-
+                FileStream fs = null;
                 try
                 {
-                    //str += "\n";
-                    string fileCaption = String.Format("\\logs\\{0}_log", DateTime.Now.Date.ToShortDateString());
-                    sw = new StreamWriter(fileCaption, true, Encoding.Default);
+                    fs = new FileStream(@"teplouchetlog.log", FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                    sw = new StreamWriter(fs, Encoding.Default);
                     if (m_vport == null) sw.WriteLine(DateTime.Now.ToString() + ": Unknown port: adress: " + m_address + ": " + str);
                     else sw.WriteLine(DateTime.Now.ToString() + ": " + m_vport.GetName() + ": adress: " + m_address + ": " + str);
                     sw.Close();
+                    fs.Close();
                 }
                 catch
                 {
@@ -42,6 +42,11 @@ namespace teplouchetapp
                     {
                         sw.Close();
                         sw = null;
+                    }
+                    if (fs != null)
+                    {
+                        fs.Close();
+                        fs = null;
                     }
                 }
             }
