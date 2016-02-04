@@ -456,7 +456,7 @@ namespace teplouchetapp
                 string answ_str = "";
                 foreach (byte b in inp)
                     answ_str += Convert.ToString(b, 16) + " ";
-                WriteToLog(answ_str);
+                //WriteToLog(answ_str);
 
                 if (inp.Length < 6)
                 {
