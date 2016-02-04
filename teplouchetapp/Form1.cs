@@ -440,7 +440,7 @@ namespace teplouchetapp
                                     for (int j = 0; j < valList.Count; j++)
                                         dt.Rows[i][columnIndexResult + 1 + j] = valList[j];
 
-                                    break;
+                                     break; 
                                 }
                                 else
                                 {
