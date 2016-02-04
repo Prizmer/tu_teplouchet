@@ -560,8 +560,7 @@ namespace teplouchetapp
 
         private void CloseApp(object o, EventArgs e)
         {
-            if (Vp.isOpened())
-                Vp.ClosePort();
+
 
             Application.Exit();
         }
@@ -570,10 +569,12 @@ namespace teplouchetapp
         {
             if (bStopProcess == false)
             {
+                MessageBox.Show("Остановите опрос перед закрытием программы");
                 e.Cancel = true;
-                bStopProcess = true;
-                pollingEnd += new EventHandler(CloseApp);
             }
+
+            if (Vp.isOpened())
+                Vp.ClosePort();
 
         }
 
