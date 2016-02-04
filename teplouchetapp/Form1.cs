@@ -244,7 +244,7 @@ namespace teplouchetapp
                 Worksheet sheet = book.Worksheets[i];
                 for (int rowIndex = firstRowIndex; rowIndex <= sheet.Cells.LastRowIndex; rowIndex++)
                 {
-                    if (bStopProcess)
+                    if (!bStopProcess)
                     {
                         button6.Enabled = false;
                         return;
