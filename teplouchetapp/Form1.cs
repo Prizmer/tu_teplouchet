@@ -177,7 +177,7 @@ namespace teplouchetapp
 
             column = dt.Columns.Add();
             column.DataType = typeof(string);
-            column.Caption = "На связи";
+            column.Caption = "На связи  ";
             column.ColumnName = "colOnline";
 
             column = dt.Columns.Add();
@@ -349,6 +349,9 @@ namespace teplouchetapp
 
         const string METER_IS_ONLINE = "ОК";
         const string METER_IS_OFFLINE = "Нет связи";
+        const string REPEAT_REQUEST = "Повтор";
+
+        int attempts = 3;
 
         private void pingMeters(Object metersDt)
         {
@@ -374,14 +377,19 @@ namespace teplouchetapp
                 {
                     if (int.TryParse(oColFactory.ToString(), out tmpNumb))
                     {
-                        if (Meter.SelectBySecondaryId(tmpNumb))
-                        {
-                            dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
-                        }
-                        else
-                        {
-                            dt.Rows[i][columnIndexResult] = METER_IS_OFFLINE;
-                        }
+                        for (int c = 0; c < attempts; c++)
+                            if (Meter.SelectBySecondaryId(tmpNumb))
+                            {
+                                dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
+                                break;
+                            }
+                            else
+                            {
+                                if (c == attempts - 1)
+                                    dt.Rows[i][columnIndexResult] = METER_IS_OFFLINE;
+                                else
+                                    dt.Rows[i][columnIndexResult] = REPEAT_REQUEST + " " + (c + 1);
+                            }
                     }
                 }
 
@@ -423,23 +431,36 @@ namespace teplouchetapp
                     if (int.TryParse(o.ToString(), out tmpNumb))
                     {
                         //служит также проверкой связи
-                        if (Meter.SelectBySecondaryId(tmpNumb))
-                        {
-                            List<float> valList = new List<float>();
-                            if (Meter.ReadCurrentValues(paramCodes, out valList))
+                        for (int c = 0; c < attempts; c++)
+                            if (Meter.SelectBySecondaryId(tmpNumb))
                             {
-                                dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
-                                for (int j = 0; j < valList.Count; j++)
-                                    dt.Rows[i][columnIndexResult + 1 + j] = valList[j];
-                            }
+                                List<float> valList = new List<float>();
+                                if (Meter.ReadCurrentValues(paramCodes, out valList))
+                                {
+                                    for (int j = 0; j < valList.Count; j++)
+                                        dt.Rows[i][columnIndexResult + 1 + j] = valList[j];
 
-                            //если тест связи пройден, а текущие не прочитаны, то счетчик на связи
-                            dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
-                        }
-                        else
-                        {
-                            dt.Rows[i][columnIndexResult] = METER_IS_OFFLINE;
-                        }
+                                    break;
+                                }
+                                else
+                                {
+                                    if (c < attempts - 1)
+                                    {
+                                        dt.Rows[i][columnIndexResult] = REPEAT_REQUEST + " " + (c + 1);
+                                        continue;
+                                    }
+                                }
+
+                                //если тест связи пройден, а текущие не прочитаны, то счетчик на связи
+                                dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
+                            }
+                            else
+                            {
+                                if (c == attempts - 1)
+                                    dt.Rows[i][columnIndexResult] = METER_IS_OFFLINE;
+                                else
+                                    dt.Rows[i][columnIndexResult] = REPEAT_REQUEST + " " + (c + 1);
+                            }
                     }
                 }
 
