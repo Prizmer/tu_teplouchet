@@ -440,7 +440,8 @@ namespace teplouchetapp
                                     for (int j = 0; j < valList.Count; j++)
                                         dt.Rows[i][columnIndexResult + 1 + j] = valList[j];
 
-                                     break; 
+                                    dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
+                                    break;
                                 }
                                 else
                                 {
@@ -449,10 +450,11 @@ namespace teplouchetapp
                                         dt.Rows[i][columnIndexResult] = REPEAT_REQUEST + " " + (c + 1);
                                         continue;
                                     }
-                                }
 
-                                //если тест связи пройден, а текущие не прочитаны, то счетчик на связи
-                                dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
+                                    //если тест связи пройден, а текущие не прочитаны, то счетчик на связи
+                                     dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
+
+                                }
                             }
                             else
                             {
