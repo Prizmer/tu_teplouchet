@@ -328,7 +328,7 @@ namespace teplouchetapp
         }
 
 
-
+        Thread pingThr = null;
         private void button2_Click(object sender, EventArgs e)
         {
             toolStripProgressBar1.Value = 0;
@@ -342,7 +342,7 @@ namespace teplouchetapp
             numericUpDown1.Enabled = false;
             checkBox1.Enabled = false;
 
-            Thread pingThr = new Thread(pingMeters);
+            pingThr = new Thread(pingMeters);
             pingThr.Start((object)dt);
         }
 
@@ -406,6 +406,7 @@ namespace teplouchetapp
 
             Invoke(pollingEnd);
         }
+
 
         private void pollMeters(Object metersDt)
         {
@@ -537,7 +538,7 @@ namespace teplouchetapp
                 return;
             }
 
-            Thread pingThr = new Thread(pollMeters);
+            pingThr = new Thread(pollMeters);
             pingThr.Start((object)dt);
         }
 
@@ -558,6 +559,10 @@ namespace teplouchetapp
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
+            bStopProcess = true;
+            if (pingThr != null && pingThr.IsAlive)
+                pingThr.Join();
+
             if (Vp.isOpened())
             {
                 Vp.ClosePort();
