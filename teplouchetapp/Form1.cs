@@ -81,27 +81,44 @@ namespace teplouchetapp
         {
             try
             {
-                SerialPort m_Port = new SerialPort(comboBox1.Items[comboBox1.SelectedIndex].ToString());
-
-                m_Port.BaudRate = int.Parse(ConfigurationSettings.AppSettings["baudrate"]);
-                m_Port.DataBits = int.Parse(ConfigurationSettings.AppSettings["databits"]);
-                m_Port.Parity = (Parity)int.Parse(ConfigurationSettings.AppSettings["parity"]);
-                m_Port.StopBits = (StopBits)int.Parse(ConfigurationSettings.AppSettings["stopbits"]);
-                m_Port.DtrEnable = bool.Parse(ConfigurationSettings.AppSettings["dtr"]);
                 byte attempts = 1;
                 ushort read_timeout = (ushort)numericUpDown1.Value;
 
-                //meters initialized by secondary id (factory n) respond to 0xFD primary addr
-                Vp = new ComPort(m_Port, attempts, read_timeout);
+                if (!checkBoxTcp.Checked)
+                {
+                    SerialPort m_Port = new SerialPort(comboBox1.Items[comboBox1.SelectedIndex].ToString());
+
+                    m_Port.BaudRate = int.Parse(ConfigurationSettings.AppSettings["baudrate"]);
+                    m_Port.DataBits = int.Parse(ConfigurationSettings.AppSettings["databits"]);
+                    m_Port.Parity = (Parity)int.Parse(ConfigurationSettings.AppSettings["parity"]);
+                    m_Port.StopBits = (StopBits)int.Parse(ConfigurationSettings.AppSettings["stopbits"]);
+                    m_Port.DtrEnable = bool.Parse(ConfigurationSettings.AppSettings["dtr"]);
+
+
+                    //meters initialized by secondary id (factory n) respond to 0xFD primary addr
+                    Vp = new ComPort(m_Port, attempts, read_timeout);
+                }
+                else
+                {
+                    Vp = new TcpipPort(textBoxIp.Text, int.Parse(textBoxPort.Text), 500, 800, 1000);
+                }
+
                 uint mAddr = 0xFD;
                 string mPass = "";
-
 
                 if (!initMeterDriver(mAddr, mPass, Vp)) return false;
 
                 //check vp settings
-                SerialPort tmpSP = Vp.getSerialPortObject();
-                toolStripStatusLabel2.Text = String.Format("{0} {1}{2}{3} DTR: {4} RTimeout: {5} ms", tmpSP.PortName, tmpSP.BaudRate, tmpSP.Parity, tmpSP.StopBits, tmpSP.DtrEnable, read_timeout); 
+                if (!checkBoxTcp.Checked)
+                {
+                    SerialPort tmpSP = Vp.getSerialPortObject();
+                    toolStripStatusLabel2.Text = String.Format("{0} {1}{2}{3} DTR: {4} RTimeout: {5} ms", tmpSP.PortName, tmpSP.BaudRate, tmpSP.Parity, tmpSP.StopBits, tmpSP.DtrEnable, read_timeout);
+                }
+                else
+                {
+                    toolStripStatusLabel2.Text = "TCP mode";
+                }
+               
 
                 return true;
             }
@@ -595,6 +612,12 @@ namespace teplouchetapp
             {
                 richTextBox1.Text = "Невозможно преобразовать серийный номер в число";
             }
+        }
+
+        private void checkBoxTcp_CheckedChanged(object sender, EventArgs e)
+        {
+            CheckBox cb = (CheckBox)sender;
+            setVirtualSerialPort();
         }
 
 

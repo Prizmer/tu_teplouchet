@@ -52,6 +52,9 @@
             this.richTextBox1 = new System.Windows.Forms.RichTextBox();
             this.label2 = new System.Windows.Forms.Label();
             this.textBox1 = new System.Windows.Forms.TextBox();
+            this.textBoxIp = new System.Windows.Forms.TextBox();
+            this.textBoxPort = new System.Windows.Forms.TextBox();
+            this.checkBoxTcp = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.dgv1)).BeginInit();
             this.statusStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown1)).BeginInit();
@@ -238,6 +241,9 @@
             // 
             // groupBox1
             // 
+            this.groupBox1.Controls.Add(this.checkBoxTcp);
+            this.groupBox1.Controls.Add(this.textBoxPort);
+            this.groupBox1.Controls.Add(this.textBoxIp);
             this.groupBox1.Controls.Add(this.button4);
             this.groupBox1.Controls.Add(this.richTextBox1);
             this.groupBox1.Controls.Add(this.label2);
@@ -262,11 +268,11 @@
             // 
             // richTextBox1
             // 
-            this.richTextBox1.Location = new System.Drawing.Point(344, 21);
+            this.richTextBox1.Location = new System.Drawing.Point(635, 21);
             this.richTextBox1.Name = "richTextBox1";
             this.richTextBox1.ReadOnly = true;
             this.richTextBox1.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
-            this.richTextBox1.Size = new System.Drawing.Size(754, 58);
+            this.richTextBox1.Size = new System.Drawing.Size(463, 58);
             this.richTextBox1.TabIndex = 51;
             this.richTextBox1.Text = "";
             // 
@@ -285,6 +291,32 @@
             this.textBox1.Name = "textBox1";
             this.textBox1.Size = new System.Drawing.Size(200, 26);
             this.textBox1.TabIndex = 49;
+            // 
+            // textBoxIp
+            // 
+            this.textBoxIp.Location = new System.Drawing.Point(342, 21);
+            this.textBoxIp.Name = "textBoxIp";
+            this.textBoxIp.Size = new System.Drawing.Size(204, 26);
+            this.textBoxIp.TabIndex = 53;
+            this.textBoxIp.Text = "192.168.4.1";
+            // 
+            // textBoxPort
+            // 
+            this.textBoxPort.Location = new System.Drawing.Point(342, 53);
+            this.textBoxPort.Name = "textBoxPort";
+            this.textBoxPort.Size = new System.Drawing.Size(99, 26);
+            this.textBoxPort.TabIndex = 54;
+            this.textBoxPort.Text = "4001";
+            // 
+            // checkBoxTcp
+            // 
+            this.checkBoxTcp.AutoSize = true;
+            this.checkBoxTcp.Location = new System.Drawing.Point(525, 57);
+            this.checkBoxTcp.Name = "checkBoxTcp";
+            this.checkBoxTcp.Size = new System.Drawing.Size(21, 20);
+            this.checkBoxTcp.TabIndex = 55;
+            this.checkBoxTcp.UseVisualStyleBackColor = true;
+            this.checkBoxTcp.CheckedChanged += new System.EventHandler(this.checkBoxTcp_CheckedChanged);
             // 
             // Form1
             // 
@@ -345,6 +377,9 @@
         private System.Windows.Forms.RichTextBox richTextBox1;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.TextBox textBox1;
+        private System.Windows.Forms.CheckBox checkBoxTcp;
+        private System.Windows.Forms.TextBox textBoxPort;
+        private System.Windows.Forms.TextBox textBoxIp;
     }
 }
 
