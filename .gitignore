@@ -6,3 +6,4 @@ teplouchetapp/bin/Release
 
 obj
 obj/*
+/teplouchetapp/bin/Debug/*.pi

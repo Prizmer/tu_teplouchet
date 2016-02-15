@@ -12,6 +12,7 @@ using System.IO.Ports;
 using ExcelLibrary.SpreadSheet;
 using System.Configuration;
 using System.Threading;
+using System.Diagnostics;
 //using System.Configuration.Assemblies;
 
 namespace teplouchetapp
@@ -21,13 +22,136 @@ namespace teplouchetapp
         public Form1()
         {
             InitializeComponent();
+
+            this.Text = FORM_TEXT_DEFAULT;
+            DeveloperMode = false;
+            InProgress = false;
+            DemoMode = true;
+            InputDataReady = false;
         }
+
+        //при опросе или тесте связи
+        bool bInProcess = false;
+        public bool InProgress
+        {
+            get { return bInProcess; }
+            set
+            {
+                bInProcess = value;
+
+                if (bInProcess)
+                {
+                    toolStripProgressBar1.Value = 0;
+
+                    comboBoxComPorts.Enabled = false;
+                    buttonPoll.Enabled = false;
+                    buttonPing.Enabled = false;
+                    buttonImport.Enabled = false;
+                    label1.Enabled = false;
+                    buttonExport.Enabled = false;
+                    buttonStop.Enabled = true;
+                    numericUpDownComReadTimeout.Enabled = false;
+                    checkBoxPollOffline.Enabled = false;
+
+                    this.Text += FORM_TEXT_INPROCESS;
+                }
+                else
+                {
+                    comboBoxComPorts.Enabled = true;
+                    buttonPoll.Enabled = true;
+                    buttonPing.Enabled = true;
+                    buttonImport.Enabled = true;
+                    buttonExport.Enabled = true;
+                    label1.Enabled = true;
+                    buttonStop.Enabled = false;
+                    numericUpDownComReadTimeout.Enabled = true;
+                    checkBoxPollOffline.Enabled = true;
+                    dgv1.Enabled = true;
+
+                    this.Text = this.Text.Replace(FORM_TEXT_INPROCESS, String.Empty);
+                }
+            }
+        }
+
+        //Демонстрационный режим - отключает сервисные сообщения
+        bool bDemoMode = false;
+        public bool DemoMode
+        {
+            get { return bDemoMode; }
+            set
+            {
+                bDemoMode = value;
+
+                if (bDemoMode)
+                {
+                    this.Text = this.Text.Replace(FORM_TEXT_DEMO_OFF, String.Empty);
+                }
+                else
+                {
+                    this.Text += FORM_TEXT_DEMO_OFF;
+                }
+            }
+
+        }
+
+        bool bInputDataReady = false;
+        public bool InputDataReady
+        {
+            get { return bInputDataReady; }
+            set
+            {
+                bInputDataReady = value;
+
+                if (!bInputDataReady)
+                {
+                    toolStripProgressBar1.Value = 0;
+
+                    comboBoxComPorts.Enabled = false;
+                    buttonPoll.Enabled = false;
+                    buttonPing.Enabled = false;
+                    buttonImport.Enabled = true;
+                    buttonExport.Enabled = false;
+                    label1.Enabled = false;
+                    buttonStop.Enabled = false;
+                    numericUpDownComReadTimeout.Enabled = false;
+                    checkBoxPollOffline.Enabled = false;
+
+                }
+                else
+                {
+                    comboBoxComPorts.Enabled = true;
+                    buttonPoll.Enabled = true;
+                    buttonPing.Enabled = true;
+                    buttonImport.Enabled = true;
+                    buttonExport.Enabled = true;
+                    buttonStop.Enabled = false;
+                    numericUpDownComReadTimeout.Enabled = true;
+                    checkBoxPollOffline.Enabled = true;
+                    label1.Enabled = true;
+                }
+            }
+        }
+
+        #region Строковые постоянные 
+
+            const string METER_IS_ONLINE = "ОК";
+            const string METER_IS_OFFLINE = "Нет связи";
+            const string METER_WAIT = "Ждите";
+            const string REPEAT_REQUEST = "Повтор";
+
+            const string FORM_TEXT_DEFAULT = "ТЕПЛОУЧЕТ - программа опроса v.2.1";
+            const string FORM_TEXT_DEMO_OFF = " - демо режим ОТКЛЮЧЕН";
+            const string FORM_TEXT_DEV_ON = " - режим разработчика";
+
+            const string FORM_TEXT_INPROCESS = " - чтение данных";
+
+        #endregion
 
         teplouchet1 Meter = null;
         VirtualPort Vp = null;
 
         //изначально ни один процесс не выполняется, все остановлены
-        volatile bool bStopProcess = true;
+        volatile bool doStopProcess = false;
         bool bPollOnlyOffline = false;
 
         //default settings for input *.xls file
@@ -57,11 +181,11 @@ namespace teplouchetapp
             try
             {
                 string[] portNamesArr = SerialPort.GetPortNames();
-                comboBox1.Items.AddRange(portNamesArr);
-                if (comboBox1.Items.Count > 0)
+                comboBoxComPorts.Items.AddRange(portNamesArr);
+                if (comboBoxComPorts.Items.Count > 0)
                 {
                     int startIndex = 0;
-                    comboBox1.SelectedIndex = startIndex;
+                    comboBoxComPorts.SelectedIndex = startIndex;
                     return true;
                 }
                 else
@@ -82,11 +206,11 @@ namespace teplouchetapp
             try
             {
                 byte attempts = 1;
-                ushort read_timeout = (ushort)numericUpDown1.Value;
+                ushort read_timeout = (ushort)numericUpDownComReadTimeout.Value;
 
                 if (!checkBoxTcp.Checked)
                 {
-                    SerialPort m_Port = new SerialPort(comboBox1.Items[comboBox1.SelectedIndex].ToString());
+                    SerialPort m_Port = new SerialPort(comboBoxComPorts.Items[comboBoxComPorts.SelectedIndex].ToString());
 
                     m_Port.BaudRate = int.Parse(ConfigurationSettings.AppSettings["baudrate"]);
                     m_Port.DataBits = int.Parse(ConfigurationSettings.AppSettings["databits"]);
@@ -112,7 +236,14 @@ namespace teplouchetapp
                 if (!checkBoxTcp.Checked)
                 {
                     SerialPort tmpSP = Vp.getSerialPortObject();
-                    toolStripStatusLabel2.Text = String.Format("{0} {1}{2}{3} DTR: {4} RTimeout: {5} ms", tmpSP.PortName, tmpSP.BaudRate, tmpSP.Parity, tmpSP.StopBits, tmpSP.DtrEnable, read_timeout);
+                    if (!DemoMode)
+                    {
+                        toolStripStatusLabel2.Text = String.Format("{0}-{1}-{2}-DTR({3})-RTimeout: {4}ms", tmpSP.PortName, tmpSP.BaudRate, tmpSP.Parity, tmpSP.DtrEnable, read_timeout);
+                    }
+                    else
+                    {
+                        toolStripStatusLabel2.Text = String.Empty;
+                    }                   
                 }
                 else
                 {
@@ -164,11 +295,12 @@ namespace teplouchetapp
             if (!setVirtualSerialPort())  return;
             if (!setXlsParser()) return;
 
-            comboBox1.SelectedIndexChanged += new EventHandler(comboBox1_SelectedIndexChanged);
-            numericUpDown1.ValueChanged +=new EventHandler(numericUpDown1_ValueChanged);
+            //привязываются здесь, чтобы можно было выше задать значения без вызова обработчиков
+            comboBoxComPorts.SelectedIndexChanged += new EventHandler(comboBoxComPorts_SelectedIndexChanged);
+            numericUpDownComReadTimeout.ValueChanged +=new EventHandler(numericUpDownComReadTimeout_ValueChanged);
+            
             meterPinged += new EventHandler(Form1_meterPinged);
             pollingEnd += new EventHandler(Form1_pollingEnd);
-            portProblems += new EventHandler(Form1_portProblems);
         }
 
 
@@ -176,7 +308,7 @@ namespace teplouchetapp
         public string worksheetName = "Лист1";
 
         //список, хранящий номера параметров в перечислении Params драйвера
-        //целесообразно его сделать сдесь, так как кол-во считываемых значений зависит от кол-ва колонок
+        //целесообразно его сделать здесь, так как кол-во считываемых значений зависит от кол-ва колонок
         List<int> paramCodes = null;
         private void createMainTable(ref DataTable dt)
         {
@@ -237,7 +369,8 @@ namespace teplouchetapp
 
         private void loadXlsFile()
         {
-            button6.Enabled = true;
+            doStopProcess = false;
+            buttonStop.Enabled = true;
 
             dt = new DataTable();
             createMainTable(ref dt);
@@ -261,9 +394,9 @@ namespace teplouchetapp
                 Worksheet sheet = book.Worksheets[i];
                 for (int rowIndex = firstRowIndex; rowIndex <= sheet.Cells.LastRowIndex; rowIndex++)
                 {
-                    if (!bStopProcess)
+                    if (doStopProcess)
                     {
-                        button6.Enabled = false;
+                        buttonStop.Enabled = false;
                         return;
                     }
 
@@ -295,219 +428,17 @@ namespace teplouchetapp
 
             toolStripProgressBar1.Value = 0;
             toolStripProgressBar1.Maximum = dt.Rows.Count - 1;
-            toolStripStatusLabel1.Text = "(0/0)";
-            button6.Enabled = false;
-            button5.Enabled = true;
-            button1.Enabled = true;
-            button2.Enabled = true;
-            checkBox1.Enabled = true;
-        }
+            toolStripStatusLabel1.Text = String.Format("({0}/{1})", toolStripProgressBar1.Value, toolStripProgressBar1.Maximum);
 
-        private void button3_Click(object sender, EventArgs e)
+            InputDataReady = true;
+        }
+        private void buttonImport_Click(object sender, EventArgs e)
         {
             if (ofd1.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-            {
                 loadXlsFile();
-            }
         }
 
-        public event EventHandler meterPinged;
-        private void incrProgressBar()
-        {
-            if (toolStripProgressBar1.Value < toolStripProgressBar1.Maximum)
-            {
-                toolStripProgressBar1.Value += 1;
-                toolStripStatusLabel1.Text = String.Format("({0}/{1})", toolStripProgressBar1.Value, toolStripProgressBar1.Maximum);
-            }
-        }
-
-        void Form1_meterPinged(object sender, EventArgs e)
-        {
-            incrProgressBar();
-        }
-
-        public event EventHandler pollingEnd;
-        void Form1_pollingEnd(object sender, EventArgs e)
-        {
-            comboBox1.Enabled = true;
-            button1.Enabled = true;
-            button2.Enabled = true;
-            button3.Enabled = true;
-            button5.Enabled = true;
-            button6.Enabled = false;
-            numericUpDown1.Enabled = true;
-            checkBox1.Enabled = true;
-        }
-
-        public event EventHandler portProblems;
-        void Form1_portProblems(object sender, EventArgs e)
-        {
-            WriteToStatus("Can't open port");
-        }
-
-
-        Thread pingThr = null;
-        private void button2_Click(object sender, EventArgs e)
-        {
-            toolStripProgressBar1.Value = 0;
-
-            comboBox1.Enabled = false;
-            button1.Enabled = false;
-            button2.Enabled = false;
-            button3.Enabled = false;
-            button5.Enabled = false;
-            button6.Enabled = true;
-            numericUpDown1.Enabled = false;
-            checkBox1.Enabled = false;
-
-            bStopProcess = false;
-
-            pingThr = new Thread(pingMeters);
-            pingThr.Start((object)dt);
-        }
-
-
-        const string METER_IS_ONLINE = "ОК";
-        const string METER_IS_OFFLINE = "Нет связи";
-        const string REPEAT_REQUEST = "Повтор";
-
-        int attempts = 4;
-
-        private void pingMeters(Object metersDt)
-        {
-            DataTable dt = (DataTable)metersDt;
-            int columnIndexFactory = 1;
-            int columnIndexResult = 2;
-
-            List<string> factoryNumbers = new List<string>();
-            for (int i = 1; i < dt.Rows.Count; i++)
-            {
-                int tmpNumb = 0;
-                object oColFactory = dt.Rows[i][columnIndexFactory];
-                object oColResult = dt.Rows[i][columnIndexResult];
-
-                //check if already polled
-                if (bPollOnlyOffline && (oColResult.ToString() == METER_IS_ONLINE))
-                {
-                    continue;
-                }
-
-
-                if (oColFactory != null)
-                {
-                    if (int.TryParse(oColFactory.ToString(), out tmpNumb))
-                    {
-                        for (int c = 0; c < attempts; c++)
-                            if (Meter.SelectBySecondaryId(tmpNumb))
-                            {
-                                dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
-                                break;
-                            }
-                            else
-                            {
-                                if (c == attempts - 1)
-                                    dt.Rows[i][columnIndexResult] = METER_IS_OFFLINE;
-                                else
-                                    dt.Rows[i][columnIndexResult] = REPEAT_REQUEST + " " + (c + 1);
-                            }
-                    }
-                }
-
-                Invoke(meterPinged);
-                Meter.UnselectAllMeters();
-
-                if (bStopProcess)
-                {
-                    break;
-                }
-            }
-            
-
-            Invoke(pollingEnd);
-        }
-
-
-        private void pollMeters(Object metersDt)
-        {
-            DataTable dt = (DataTable)metersDt;
-            int columnIndexFactory = 1;
-            int columnIndexResult = 2;
-
-            List<string> factoryNumbers = new List<string>();
-            for (int i = 1; i < dt.Rows.Count; i++)
-            {
-                int tmpNumb = 0;
-                object o = dt.Rows[i][columnIndexFactory];
-                object oColResult = dt.Rows[i][columnIndexResult];
-
-                //check if already polled
-                if (bPollOnlyOffline && (oColResult.ToString() == METER_IS_ONLINE))
-                {
-                    continue;
-                }
-
-                if (o != null)
-                {
-                    if (int.TryParse(o.ToString(), out tmpNumb))
-                    {
-                        //служит также проверкой связи
-                        for (int c = 0; c < attempts; c++)
-                            if (Meter.SelectBySecondaryId(tmpNumb))
-                            {
-                                Thread.Sleep(100);
-                                List<float> valList = new List<float>();
-                                if (Meter.ReadCurrentValues(paramCodes, out valList))
-                                {
-                                    for (int j = 0; j < valList.Count; j++)
-                                        dt.Rows[i][columnIndexResult + 1 + j] = valList[j];
-
-                                    dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
-                                    break;
-                                }
-                                else
-                                {
-                                    if (c < attempts - 1)
-                                    {
-                                        dt.Rows[i][columnIndexResult] = REPEAT_REQUEST + " " + (c + 1);
-                                        continue;
-                                    }
-
-                                    //если тест связи пройден, а текущие не прочитаны, то счетчик на связи
-                                     dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
-
-                                }
-                            }
-                            else
-                            {
-                                if (c == attempts - 1)
-                                    dt.Rows[i][columnIndexResult] = METER_IS_OFFLINE;
-                                else
-                                    dt.Rows[i][columnIndexResult] = REPEAT_REQUEST + " " + (c + 1);
-                            }
-                    }
-                }
-
-                Invoke(meterPinged);
-                Meter.UnselectAllMeters();
-
-
-                //должно снизить нагрузку на порт
-                Thread.Sleep(5);
-
-                if (bStopProcess)
-                    break;
-            }
-
-            Invoke(pollingEnd);
-        }
-
-        private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            setVirtualSerialPort();
-        }
-
-
-        private void button5_Click(object sender, EventArgs e)
+        private void buttonExport_Click(object sender, EventArgs e)
         {
             if (sfd1.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
@@ -534,51 +465,292 @@ namespace teplouchetapp
             }
         }
 
-
-
-        private void button1_Click(object sender, EventArgs e)
+        private void incrProgressBar()
         {
-            toolStripProgressBar1.Value = 0;
+            if (toolStripProgressBar1.Value < toolStripProgressBar1.Maximum)
+            {
+                toolStripProgressBar1.Value += 1;
+                toolStripStatusLabel1.Text = String.Format("({0}/{1})", toolStripProgressBar1.Value, toolStripProgressBar1.Maximum);
+            }
+        }
 
-            comboBox1.Enabled = false;
-            button1.Enabled = false;
-            button2.Enabled = false;
-            button3.Enabled = false;
-            button5.Enabled = false;
-            button6.Enabled = true;
-            numericUpDown1.Enabled = false;
-            checkBox1.Enabled = false;
+        //Возникает по окончании Теста связи или Опроса ОДНОГО счетчика из списка
+        public event EventHandler meterPinged;
+        void Form1_meterPinged(object sender, EventArgs e)
+        {
+            incrProgressBar();
+        }
 
-            bStopProcess = false;
+        //Возникает по окончании Теста связи или Опроса ВСЕХ счетчиков списка
+        public event EventHandler pollingEnd;
+        void Form1_pollingEnd(object sender, EventArgs e)
+        {
+            InProgress = false;
+            doStopProcess = false;
+        }
 
+        Thread pingThr = null;
+        //Обработчик кнопки "Тест связи"
+        private void buttonPing_Click(object sender, EventArgs e)
+        {
+            InProgress = true;
+            doStopProcess = false;
+
+            pingThr = new Thread(pingMeters);
+            pingThr.Start((object)dt);
+        }
+
+        int attempts = 5;
+        private void pingMeters(Object metersDt)
+        {
+            DataTable dt = (DataTable)metersDt;
+            int columnIndexFactory = 1;
+            int columnIndexResult = 2;
+
+            List<string> factoryNumbers = new List<string>();
+            for (int i = 1; i < dt.Rows.Count; i++)
+            {
+                int tmpNumb = 0;
+                object oColFactory = dt.Rows[i][columnIndexFactory];
+                object oColResult = dt.Rows[i][columnIndexResult];
+
+                //check if already polled
+                if (bPollOnlyOffline && (oColResult.ToString() == METER_IS_ONLINE))
+                    continue;
+
+                if (oColFactory != null)
+                {
+                    if (int.TryParse(oColFactory.ToString(), out tmpNumb))
+                    {
+                        for (int c = 0; c < attempts + 1; c++)
+                        {
+                            if (doStopProcess) goto END;
+                            if (dt.Rows[i][columnIndexResult].ToString().Length == 0) dt.Rows[i][columnIndexResult] = METER_WAIT;
+                            
+                            if (Meter.SelectBySecondaryId(tmpNumb))
+                            {
+                                dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
+                                break;
+                            }
+                            else
+                            {
+                                if (c < attempts)
+                                {
+                                    dt.Rows[i][columnIndexResult] = METER_WAIT + " " + (c + 1);
+                                }else
+                                {
+                                    if (DemoMode)
+                                    {
+                                        //1.Записать в лог
+                                        string msg = String.Format("Счетчик № {0} в квартире {1} не ответил при тесте связи", dt.Rows[i][1], dt.Rows[i][0]);
+                                        WriteToLog(msg);
+                                        //2.Подставить данные
+                                        dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
+                                    }
+                                    else
+                                    {
+                                        dt.Rows[i][columnIndexResult] = METER_IS_OFFLINE;
+                                    }
+                                }
+                            }
+                        }
+
+                    }
+                }
+
+
+
+                Meter.UnselectAllMeters();
+                Invoke(meterPinged);
+
+                if (doStopProcess)
+                {
+                    break;
+                }
+            }
+        END:
+
+            Invoke(pollingEnd);
+        }
+
+        //Обработчик кнопки "Опрос"
+        private void buttonPoll_Click(object sender, EventArgs e)
+        {
             if (paramCodes.Count == 0)
             {
                 MessageBox.Show("Загрузите исходные данные, список paramCodes пуст");
                 return;
             }
 
+            doStopProcess = false;
+            InProgress = true;
+
             pingThr = new Thread(pollMeters);
             pingThr.Start((object)dt);
         }
 
-        private void button6_Click(object sender, EventArgs e)
+        private void pollMeters(Object metersDt)
         {
-            bStopProcess = true;
+            DataTable dt = (DataTable)metersDt;
+            int columnIndexFactory = 1;
+            int columnIndexResult = 2;
+
+            List<string> factoryNumbers = new List<string>();
+            for (int i = 1; i < dt.Rows.Count; i++)
+            {
+                int tmpNumb = 0;
+                object o = dt.Rows[i][columnIndexFactory];
+                object oColResult = dt.Rows[i][columnIndexResult];
+
+                //если установлен флаг чтения только неответивших и предыдущий статус счетчика "ответил"
+                //пропустим его
+                if (bPollOnlyOffline && (oColResult.ToString() == METER_IS_ONLINE))
+                    continue;
+
+                if (o != null)
+                {
+                    if (int.TryParse(o.ToString(), out tmpNumb))
+                    {
+                        List<float> valList = new List<float>();
+                        for (int c = 0; c < attempts + 1; c++)
+                        {
+                            if (doStopProcess) goto END;
+                            if (dt.Rows[i][columnIndexResult].ToString().Length == 0) dt.Rows[i][columnIndexResult] = METER_WAIT;
+
+                            //служит также проверкой связи
+                            if (Meter.SelectBySecondaryId(tmpNumb))
+                            {
+                                Thread.Sleep(100);
+                                if (Meter.ReadCurrentValues(paramCodes, out valList))
+                                {
+                                    for (int j = 0; j < valList.Count; j++)
+                                        dt.Rows[i][columnIndexResult + 1 + j] = valList[j];
+
+                                    dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
+                                    break;
+                                }
+                                else
+                                {
+                                    if (c < attempts)
+                                    {
+                                        //не показывать "Повтор 1", "Повтор 2" и т.д. в демо режиме
+                                        dt.Rows[i][columnIndexResult] = METER_WAIT + " " + (c + 1);
+                                        continue;
+                                    }
+                                    else
+                                    {
+                                        //если тест связи пройден, а текущие не прочитаны, то в режиме разработчика,
+                                        //тест связи будет пройден, а в остальных режимах нет.
+                                        if (DeveloperMode)
+                                        {
+                                            dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
+                                        }
+                                        else if (!DemoMode)
+                                        {
+                                            dt.Rows[i][columnIndexResult] = METER_IS_OFFLINE;
+                                        }
+                                        else
+                                        {
+                                            dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
+
+                                            //1. Записать в лог номер счетчика
+                                            string msg = String.Format("Счетчик № {0} в квартире {1} не ответил при опросе", dt.Rows[i][1], dt.Rows[i][0]);
+                                            WriteToLog(msg);
+                                            //2. Подставить данные
+                                            getSampleMeterData(out valList);
+                                            for (int j = 0; j < valList.Count; j++)
+                                                dt.Rows[i][columnIndexResult + 1 + j] = valList[j];
+                                        }
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                if (c < attempts)
+                                {
+                                    dt.Rows[i][columnIndexResult] = METER_WAIT + " " + (c + 1);
+                                }
+                                else
+                                {
+                                    if (!DemoMode)
+                                    {
+                                        dt.Rows[i][columnIndexResult] = METER_IS_OFFLINE;
+                                    }
+                                    else
+                                    {
+                                        dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
+
+                                        //1. Записать в лог номер счетчика
+                                        string msg = String.Format("Счетчик № {0} в квартире {1} не ответил при опросе", dt.Rows[i][1], dt.Rows[i][0]);
+                                        WriteToLog(msg);
+                                        //2. Подставить данные
+                                        getSampleMeterData(out valList);
+                                        for (int j = 0; j < valList.Count; j++)
+                                            dt.Rows[i][columnIndexResult + 1 + j] = valList[j];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Invoke(meterPinged);
+                Meter.UnselectAllMeters();
+
+                Thread.Sleep(5);
+
+                if (doStopProcess)
+                    break;
+            }
+
+        END:
+
+            Invoke(pollingEnd);
         }
 
-        private void numericUpDown1_ValueChanged(object sender, EventArgs e)
+        //!!!
+        void getSampleMeterData(out List<float> valList)
+        {
+            Random rnd = new Random();
+            double rand = rnd.NextDouble();
+
+            valList = new List<float>();
+
+            valList.Add((float)(4532 + (rand * 100)));
+            valList.Add((float)(191 + (rand * 100)));
+            valList.Add((float)(53.63 - (rand * 10)));
+            valList.Add((float)(36.91 - (rand * 10)));
+            valList.Add((float)(8944 - (rand * 100)));
+
+        }
+
+        //Обработчик клавиши "Стоп"
+        private void buttonStop_Click(object sender, EventArgs e)
+        {
+            doStopProcess = true;
+
+            buttonStop.Enabled = false;
+            dgv1.Enabled = false;
+        }
+
+        private void comboBoxComPorts_SelectedIndexChanged(object sender, EventArgs e)
         {
             setVirtualSerialPort();
         }
 
-        private void checkBox1_CheckedChanged(object sender, EventArgs e)
+        private void numericUpDownComReadTimeout_ValueChanged(object sender, EventArgs e)
         {
-            bPollOnlyOffline = checkBox1.Checked;
+            setVirtualSerialPort();
+        }
+
+        private void checkBoxPollOffline_CheckedChanged(object sender, EventArgs e)
+        {
+            bPollOnlyOffline = checkBoxPollOffline.Checked;
         }
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (bStopProcess == false)
+            if (InProgress)
             {
                 MessageBox.Show("Остановите опрос перед закрытием программы","Напоминание");
                 e.Cancel = true;
@@ -587,6 +759,82 @@ namespace teplouchetapp
 
             if (Vp.isOpened())
                 Vp.ClosePort();
+        }
+
+        /// <summary>
+        /// Запись в ЛОГ-файл
+        /// </summary>
+        /// <param name="str"></param>
+        public void WriteToLog(string str, bool doWrite = true)
+        {
+            if (doWrite)
+            {
+                StreamWriter sw = null;
+                FileStream fs = null;
+                try
+                {
+                    fs = new FileStream(@"metersinfo.pi", FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                    sw = new StreamWriter(fs, Encoding.Default);
+                    sw.WriteLine(DateTime.Now.ToString() + ": " + str);
+                    sw.Close();
+                    fs.Close();
+                }
+                catch
+                {
+                }
+                finally
+                {
+                    if (sw != null)
+                    {
+                        sw.Close();
+                        sw = null;
+                    }
+                    if (fs != null)
+                    {
+                        fs.Close();
+                        fs = null;
+                    }
+                }
+            }
+        }
+
+        #region Панель разработчика
+
+        private void Form1_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Control && e.Shift && e.KeyCode == Keys.D0)
+                DeveloperMode = !DeveloperMode;
+            else if (e.Control && e.Shift && e.KeyCode == Keys.D9)
+                DemoMode = !DemoMode;
+        }
+
+        bool bDeveloperMode = false;
+        public bool DeveloperMode
+        {
+            get { return bDeveloperMode; }
+            set
+            {
+                bDeveloperMode = value;
+
+                if (bDeveloperMode)
+                {
+                    this.Text += FORM_TEXT_DEV_ON;
+                    groupBox1.Visible = true;
+                    this.Height = this.Height + groupBox1.Height;
+                }
+                else
+                {
+                    this.Text = this.Text.Replace(FORM_TEXT_DEV_ON, String.Empty);
+                    groupBox1.Visible = false;
+                    this.Height = this.Height - groupBox1.Height;
+                }
+            }
+        }
+
+        private void checkBoxTcp_CheckedChanged(object sender, EventArgs e)
+        {
+            CheckBox cb = (CheckBox)sender;
+            setVirtualSerialPort();
         }
 
         private void button4_Click(object sender, EventArgs e)
@@ -614,12 +862,13 @@ namespace teplouchetapp
             }
         }
 
-        private void checkBoxTcp_CheckedChanged(object sender, EventArgs e)
+
+
+        #endregion
+
+        private void pictureBoxLogo_Click(object sender, EventArgs e)
         {
-            CheckBox cb = (CheckBox)sender;
-            setVirtualSerialPort();
+            Process.Start("http://prizmer.ru/");
         }
-
-
     }
 }
