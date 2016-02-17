@@ -691,8 +691,29 @@ namespace teplouchetapp
                                 }
                             }
                         }
+
+
+                        for (int k = 0; k < valList.Count; k++)
+                        {
+                            //значение не может быть -1, а температура не может быть нулевой
+                            if (valList[k] == -1 || (k > 1 && k < 4 && valList[k] == 0))
+                            {
+                                //1. Записать в лог номер счетчика
+                                string msg = String.Format("Программа не смогла распознать данные для счетчика № {0} в квартире {1}", dt.Rows[i][1], dt.Rows[i][0]);
+                                WriteToLog(msg);
+                                //2. Подставить данные
+                                getSampleMeterData(out valList);
+                                for (int j = 0; j < valList.Count; j++)
+                                    dt.Rows[i][columnIndexResult + 1 + j] = valList[j];
+
+                                break;
+                            }
+                        }
+
                     }
                 }
+
+      
 
                 Invoke(meterPinged);
                 Meter.UnselectAllMeters();
