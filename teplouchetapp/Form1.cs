@@ -500,7 +500,7 @@ namespace teplouchetapp
             pingThr.Start((object)dt);
         }
 
-        int attempts = 0;
+        int attempts = 3;
         private void pingMeters(Object metersDt)
         {
             DataTable dt = (DataTable)metersDt;
