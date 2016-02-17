@@ -500,7 +500,7 @@ namespace teplouchetapp
             pingThr.Start((object)dt);
         }
 
-        int attempts = 5;
+        int attempts = 0;
         private void pingMeters(Object metersDt)
         {
             DataTable dt = (DataTable)metersDt;
@@ -716,11 +716,11 @@ namespace teplouchetapp
 
             valList = new List<float>();
 
-            valList.Add((float)(4532 + (rand * 100)));
-            valList.Add((float)(191 + (rand * 100)));
-            valList.Add((float)(53.63 - (rand * 10)));
-            valList.Add((float)(36.91 - (rand * 10)));
-            valList.Add((float)(8944 - (rand * 100)));
+            valList.Add((int)(4532 + (rand * 100)));
+            valList.Add((int)(191 + (rand * 100)));
+            valList.Add((float)Math.Round(52.63 - (rand * 10), 2));
+            valList.Add((float)Math.Round(40.91 - (rand * 10), 2));
+            valList.Add((int)(8944 - (rand * 100)));
 
         }
 
