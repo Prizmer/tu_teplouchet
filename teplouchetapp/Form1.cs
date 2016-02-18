@@ -617,10 +617,10 @@ namespace teplouchetapp
                             if (c == 0) dt.Rows[i][columnIndexResult] = METER_WAIT;
 
                             //служит также проверкой связи
-                            if (Meter.SelectBySecondaryId(tmpNumb))
+                            if (Meter.SelectBySecondaryId(tmpNumb) && Meter.SelectBySecondaryId(tmpNumb))
                             {
                                 Thread.Sleep(100);
-                                if (Meter.ReadCurrentValues(paramCodes, out valList))
+                                if (Meter.ReadCurrentValues(paramCodes, out valList) && Meter.ReadCurrentValues(paramCodes, out valList))
                                 {
                                     for (int j = 0; j < valList.Count; j++)
                                         dt.Rows[i][columnIndexResult + 1 + j] = valList[j];
@@ -727,6 +727,7 @@ namespace teplouchetapp
 
             Invoke(pollingEnd);
         }
+
 
         //!!!
         void getSampleMeterData(out List<float> valList)
