@@ -462,7 +462,7 @@ namespace teplouchetapp
                 byte byteCSEvaluated = 0;
 
                 //расчитаем контрольную сумму по данным ответа и сравним ее с присланной счетчиком
-                for (int i = byteCIndex; i < byteCIndex; i++)
+                for (int i = byteCIndex; i < byteCSIndex; i++)
                     byteCSEvaluated += inp[i];
 
                 if (byteCSEvaluated != byteCSVal)
