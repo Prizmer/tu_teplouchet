@@ -164,16 +164,21 @@ namespace teplouchetapp
 
         public void WriteToLog(string str)
         {
-            try
+            if (false)
             {
-                using (StreamWriter sw = new StreamWriter("TcpPorts.log", true, Encoding.Default))
+                try
                 {
-                    sw.WriteLine(DateTime.Now.ToString() + ": " + GetName() + ": " + str);
+                    using (StreamWriter sw = new StreamWriter("TcpPorts.log", true, Encoding.Default))
+                    {
+                        sw.WriteLine(DateTime.Now.ToString() + ": " + GetName() + ": " + str);
+                    }
                 }
+                catch
+                {
+                }
+
             }
-            catch
-            {
-            }
+
         }
 
         public bool isOpened()
@@ -432,15 +437,18 @@ namespace teplouchetapp
 
         public void WriteToLog(string str)
         {
-            try
+            if (false)
             {
-                using (StreamWriter sw = new StreamWriter("ComPorts.log", true, Encoding.Default))
+                try
                 {
-                    sw.WriteLine(DateTime.Now.ToString() + ": " + GetName() + ": " + str);
+                    using (StreamWriter sw = new StreamWriter("ComPorts.log", true, Encoding.Default))
+                    {
+                        sw.WriteLine(DateTime.Now.ToString() + ": " + GetName() + ": " + str);
+                    }
                 }
-            }
-            catch
-            {
+                catch
+                {
+                }
             }
         }
 

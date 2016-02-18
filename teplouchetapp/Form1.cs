@@ -139,7 +139,7 @@ namespace teplouchetapp
             const string METER_WAIT = "Ждите";
             const string REPEAT_REQUEST = "Повтор";
 
-            const string FORM_TEXT_DEFAULT = "ТЕПЛОУЧЕТ - программа опроса v.2.1";
+            const string FORM_TEXT_DEFAULT = "ТЕПЛОУЧЕТ - программа опроса v.2.2";
             const string FORM_TEXT_DEMO_OFF = " - демо режим ОТКЛЮЧЕН";
             const string FORM_TEXT_DEV_ON = " - режим разработчика";
 
@@ -495,6 +495,8 @@ namespace teplouchetapp
             InProgress = true;
             doStopProcess = false;
 
+            DeleteLogFiles();
+
             pingThr = new Thread(pingMeters);
             pingThr.Start((object)dt);
         }
@@ -581,11 +583,31 @@ namespace teplouchetapp
                 return;
             }
 
-            doStopProcess = false;
             InProgress = true;
+            doStopProcess = false;
+
+            DeleteLogFiles();
 
             pingThr = new Thread(pollMeters);
             pingThr.Start((object)dt);
+        }
+
+        private void DeleteLogFiles()
+        {
+            try
+            {
+                FileInfo fi = new FileInfo(@"teplouchetlog.txt");
+                if (fi.Exists)
+                    fi.Delete();
+
+                fi = new FileInfo(@"metersinfo.pi");
+                if (fi.Exists)
+                    fi.Delete();
+            }
+            catch (Exception ex)
+            {
+                //
+            }
         }
 
         private void pollMeters(Object metersDt)

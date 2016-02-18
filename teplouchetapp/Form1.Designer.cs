@@ -210,7 +210,7 @@
             this.numericUpDownComReadTimeout.TabIndex = 45;
             this.toolTip1.SetToolTip(this.numericUpDownComReadTimeout, "Время ожидания ответа одного счетчика");
             this.numericUpDownComReadTimeout.Value = new decimal(new int[] {
-            900,
+            800,
             0,
             0,
             0});
