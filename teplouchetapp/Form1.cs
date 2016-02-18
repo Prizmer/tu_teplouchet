@@ -615,19 +615,21 @@ namespace teplouchetapp
                         {
                             if (doStopProcess) goto END;
                             if (c == 0) dt.Rows[i][columnIndexResult] = METER_WAIT;
+                            if (c > 0) Thread.Sleep(200);
 
                             bool secondTry = true;
-
+                            
                         SELECTAGAIN:
                             //служит также проверкой связи
                             if (Meter.SelectBySecondaryId(tmpNumb))
                             {
-                                Thread.Sleep(100);
-                                if (Meter.ReadCurrentValues(paramCodes, out valList) && Meter.ReadCurrentValues(paramCodes, out valList))
+                                Thread.Sleep(50);
+                                if (Meter.ReadCurrentValues(paramCodes, out valList))
                                 {
                                     if (!isDataCorrect(valList) && secondTry)
                                     {
                                         secondTry = false;
+                                        Thread.Sleep(200);
                                         goto SELECTAGAIN;
                                     }
 
@@ -716,8 +718,6 @@ namespace teplouchetapp
 
                 Invoke(meterPinged);
                 Meter.UnselectAllMeters();
-
-                Thread.Sleep(5);
 
                 if (doStopProcess)
                     break;

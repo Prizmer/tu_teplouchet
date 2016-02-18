@@ -391,9 +391,11 @@ namespace teplouchetapp
                 m_vport.WriteReadData(findPackageSign, cmdArr, ref inp, cmdArr.Length, -1);
 
                 string answ_str = "";
-                foreach (byte b in inp)
-                    answ_str += Convert.ToString(b, 16) + " ";
-                //WriteToLog(answ_str);
+                if (bLogOutBytes)
+                {
+                    answ_str = String.Format("SendREQ_UD2 (row): [{0}];", BitConverter.ToString(inp).Replace("-"," "));
+                    WriteToLog(answ_str);
+                }
 
                 if (inp.Length < 6)
                 {
