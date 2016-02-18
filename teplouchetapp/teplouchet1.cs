@@ -451,10 +451,25 @@ namespace teplouchetapp
 
                 //байт окончания сообщения
                 int lastByteIndex = byteCIndex + dataLength + 1;
-                int byteCSIndex = byteCIndex + dataLength;
                 if (inp[lastByteIndex] != 0x16)
                 {
                     WriteToLog("SendREQ_UD2: не найден байт окончания сообщения 0х16");
+                    return false;
+                }
+
+                int byteCSIndex = byteCIndex + dataLength;
+                byte byteCSVal = inp[byteCSIndex];
+                byte byteCSEvaluated = 0;
+
+                //расчитаем контрольную сумму по данным ответа и сравним ее с присланной счетчиком
+                for (int i = byteCIndex; i < byteCIndex; i++)
+                    byteCSEvaluated += inp[i];
+
+                if (byteCSEvaluated != byteCSVal)
+                {
+                    string msg = String.Format("SendREQ_UD2: рассчитанная контрольная сумма ({0}) не соответствует сумме, рассчитанной счетчиком ({1}) - данные некорректны. ",
+                        Convert.ToString(byteCSEvaluated, 16), Convert.ToString(byteCSVal, 16));
+                    WriteToLog(msg);
                     return false;
                 }
 
