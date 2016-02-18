@@ -616,12 +616,21 @@ namespace teplouchetapp
                             if (doStopProcess) goto END;
                             if (c == 0) dt.Rows[i][columnIndexResult] = METER_WAIT;
 
+                            bool secondTry = true;
+
+                        SELECTAGAIN:
                             //служит также проверкой связи
-                            if (Meter.SelectBySecondaryId(tmpNumb) && Meter.SelectBySecondaryId(tmpNumb))
+                            if (Meter.SelectBySecondaryId(tmpNumb))
                             {
                                 Thread.Sleep(100);
                                 if (Meter.ReadCurrentValues(paramCodes, out valList) && Meter.ReadCurrentValues(paramCodes, out valList))
                                 {
+                                    if (!isDataCorrect(valList) && secondTry)
+                                    {
+                                        secondTry = false;
+                                        goto SELECTAGAIN;
+                                    }
+
                                     for (int j = 0; j < valList.Count; j++)
                                         dt.Rows[i][columnIndexResult + 1 + j] = valList[j];
 
@@ -692,23 +701,14 @@ namespace teplouchetapp
                         }
 
 
-                        for (int k = 0; k < valList.Count; k++)
+                        if (!isDataCorrect(valList))
                         {
-                            //значение не может быть -1, а температура не может быть нулевой
-                            if (valList[k] == -1 || (k > 1 && k < 4 && valList[k] == 0))
-                            {
-                                //1. Записать в лог номер счетчика
-                                string msg = String.Format("Программа не смогла распознать данные для счетчика № {0} в квартире {1}", dt.Rows[i][1], dt.Rows[i][0]);
-                                WriteToLog(msg);
-                                //2. Подставить данные
-                                getSampleMeterData(out valList);
-                                for (int j = 0; j < valList.Count; j++)
-                                    dt.Rows[i][columnIndexResult + 1 + j] = valList[j];
-
-                                break;
-                            }
+                            //1. Записать в лог номер счетчика
+                            string msg = String.Format("Программа не смогла распознать данные для счетчика № {0} в квартире {1}", dt.Rows[i][1], dt.Rows[i][0]);
+                            WriteToLog(msg);
+                            //2. Подставить данные
+                            getSampleMeterData(out valList);
                         }
-
                     }
                 }
 
@@ -728,6 +728,19 @@ namespace teplouchetapp
             Invoke(pollingEnd);
         }
 
+        bool isDataCorrect(List<float> valList)
+        {
+            for (int k = 0; k < valList.Count; k++)
+            {
+                //значение не может быть -1, а температура не может быть нулевой
+                if (valList[k] < 0 || (k > 1 && k < 5 && valList[k] == 0))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
 
         //!!!
         void getSampleMeterData(out List<float> valList)
