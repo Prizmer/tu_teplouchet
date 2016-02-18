@@ -20,13 +20,13 @@ namespace teplouchetapp
         /// <param name="str"></param>
         public void WriteToLog(string str, bool doWrite = true)
         {
-            if (false)
+            if (doWrite)
             {
                 StreamWriter sw = null;
                 FileStream fs = null;
                 try
                 {
-                    fs = new FileStream(@"teplouchetlog.log", FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                    fs = new FileStream(@"teplouchetlog.txt", FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
                     sw = new StreamWriter(fs, Encoding.Default);
                     if (m_vport == null) sw.WriteLine(DateTime.Now.ToString() + ": Unknown port: adress: " + m_address + ": " + str);
                     else sw.WriteLine(DateTime.Now.ToString() + ": " + m_vport.GetName() + ": adress: " + m_address + ": " + str);

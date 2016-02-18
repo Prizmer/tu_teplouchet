@@ -15,6 +15,8 @@ namespace teplouchetapp
             this.m_addr = (byte)(this.m_address & 0x000000ff);
             this.m_vport = vp;
         }
+
+        bool bLogOutBytes = true;
         
         public teplouchet1()
         {
@@ -22,77 +24,6 @@ namespace teplouchetapp
         }
 
         private byte m_addr;
-
-
-        /*
-        const int REQ_UD2_HEADER_SIZE = 24;
-        const int REQ_UD2_DATA_SIZE = 46;
-        const int REQ_UD2_ANSW_SIZE = 72;
-
-        struct RecordDescription
-        {
-            public RecordDescription(int index, byte size, byte cmd_size, float coeff)
-            {
-                this.index = index;
-                this.size = size;
-                this.cmd_size = cmd_size;
-                this.coeff = coeff;
-            }
-
-            public int index;
-            public byte size;
-            public byte cmd_size;
-            public float coeff;
-        }
-
-        RecordDescription energy = new RecordDescription(0, 6, 2, 1); //k = 1000 (Wh), 1 (kWh)
-        RecordDescription volume = new RecordDescription(6, 6, 2, 1);
-        RecordDescription time_on = new RecordDescription(12, 6, 2, 1);
-        RecordDescription power = new RecordDescription(18, 6, 2, 1000);
-        RecordDescription volflow = new RecordDescription(24, 6, 2, 0.001f);
-        RecordDescription temp_in = new RecordDescription(30, 4, 2, 0.01f);
-        RecordDescription temp_out = new RecordDescription(34, 4, 2, 0.01f);
-        RecordDescription temp_diff = new RecordDescription(38, 4, 2, 0.01f);
-       // RecordDescription dt = new RecordDescription(40, 4, 2, 1);
-        */
-
-        /*
-        bool SendREQ_UD2(ref byte[] data_arr)
-        {
-            byte cmd = 0x5B;
-            byte CS = (byte)(cmd + m_addr);
-            
-            byte[] cmdArr = { 0x10, cmd, m_addr, CS, 0x16 };
-            int firstRecordByteIndex = cmdArr.Length + 4 + 3 + 12;
-            int lastRecordByteIndex = -1;
-
-            byte[] inp = new byte[512];
-            try
-            {
-                int readBytes = m_vport.WriteReadData(findPackageSign, cmdArr, ref inp, cmdArr.Length, -1);
-                for (int i = inp.Length - 1; i >= 0; i--)
-                    if (inp[i] == 0x16)
-                    {
-                        lastRecordByteIndex = i - 2;
-                        break;
-                    }
-
-                List<byte> UserDataBlock = new List<byte>();
-                for (int i = firstRecordByteIndex; i <= lastRecordByteIndex; i++)
-                    UserDataBlock.Add(inp[i]);
-
-                if (UserDataBlock.Count == 0) return false;
-                data_arr = UserDataBlock.ToArray();
-                    return true;
-
-            }
-            catch (Exception ex)
-            {
-                WriteToLog("SendREQ_UD2: " + ex.Message);
-                return false;
-            }
-        }
-        */
 
         #region Протокол MBUS
 
@@ -330,13 +261,19 @@ namespace teplouchetapp
             List<byte> answerBytes = new List<byte>();
             if (!SendREQ_UD2(out answerBytes) || answerBytes.Count == 0)
             {
-                WriteToLog("ReadSerialNumber: не получены байты ответа");
+                WriteToLog("GetRecordsList: не получены байты ответа");
                 return false;
+            }
+
+            if (bLogOutBytes)
+            {
+                string answBytesStr = String.Format("GetRecordsList, response:\n[{0}];", BitConverter.ToString(answerBytes.ToArray()).Replace("-", " "));
+                WriteToLog(answBytesStr);
             }
 
             if (!SplitRecords(answerBytes, ref records) || records.Count == 0)
             {
-                WriteToLog("ReadSerialNumber: не удалось разделить запись");
+                WriteToLog("GetRecordsList: не удалось разделить запись");
                 return false;
             }
 
@@ -615,10 +552,11 @@ namespace teplouchetapp
                 for (int i = inp.Length - 1; i >= 0; i--)
                     if (inp[i] == 0xE5)
                     {
+                        WriteToLog("SelectBySecondaryId: выбран счетчик " + current_secondary_id_str, bLogOutBytes);
                         return true;
                     }
 
-                WriteToLog("SelectBySecondaryId: в ответе не найден байт подтверждения 0xE5");
+                WriteToLog("SelectBySecondaryId: в ответе не найден байт подтверждения 0xE5 для счетчика " + current_secondary_id_str);
                 return false;
 
             }
@@ -642,16 +580,18 @@ namespace teplouchetapp
             try
             {
                 int readBytes = m_vport.WriteReadData(findPackageSign, cmdArr, ref inp, cmdArr.Length, -1);
-                if (inp[readBytes - 1] == 0xE5)
+                if (readBytes >= 1 && inp[readBytes - 1] == 0xE5)
                     confirmed = true;
                 else
                     confirmed = false;
+
+                WriteToLog("SND_NKE: деселекция", bLogOutBytes);
 
                 return true;
             }
             catch (Exception ex)
             {
-                WriteToLog("SendREQ_UD2: " + ex.Message);
+                WriteToLog("SND_NKE: " + ex.Message);
                 return false;
             }
 
@@ -682,10 +622,28 @@ namespace teplouchetapp
                 return false;
             }
 
+            //вывод в лог "сырых" байт, поступивших со счетчика
+            if (bLogOutBytes)
+            {
+                string answBytesStr = String.Format("ReadCurrentValues, response:\n[{0}];", BitConverter.ToString(answerBytes.ToArray()).Replace("-", " "));
+                WriteToLog(answBytesStr);
+            }
+
             if (!SplitRecords(answerBytes, ref records) || records.Count == 0)
             {
                 WriteToLog("ReadCurrentValues: не удалось разделить запись");
                 return false;
+            }
+
+            //вывод в лог байт параметров, выделенных программой из "сырого" ответа
+            if (bLogOutBytes)
+            {             
+                string recordsStr = String.Empty;
+                foreach (Record tR in records)
+                    recordsStr += "[" + BitConverter.ToString(tR.dataBytes.ToArray()).Replace("-", " ") + "], ";
+
+                string answBytesStr = String.Format("ReadCurrentValues, records:\n{0};", recordsStr);      
+                WriteToLog(answBytesStr);
             }
 
             foreach (int p in paramCodes)

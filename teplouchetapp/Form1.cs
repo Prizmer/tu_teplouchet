@@ -284,7 +284,7 @@ namespace teplouchetapp
         }
 
         private void Form1_Load(object sender, EventArgs e)
-        {
+        {           
             //setting up dialogs
             ofd1.Filter = "Excel files (*.xls) | *.xls";
             sfd1.Filter = ofd1.Filter;
@@ -302,7 +302,6 @@ namespace teplouchetapp
             meterPinged += new EventHandler(Form1_meterPinged);
             pollingEnd += new EventHandler(Form1_pollingEnd);
         }
-
 
         DataTable dt = new DataTable("meters");
         public string worksheetName = "Лист1";
@@ -525,7 +524,7 @@ namespace teplouchetapp
                         for (int c = 0; c < attempts + 1; c++)
                         {
                             if (doStopProcess) goto END;
-                            if (dt.Rows[i][columnIndexResult].ToString().Length == 0) dt.Rows[i][columnIndexResult] = METER_WAIT;
+                            if (c == 0) dt.Rows[i][columnIndexResult] = METER_WAIT;
                             
                             if (Meter.SelectBySecondaryId(tmpNumb))
                             {
@@ -615,7 +614,7 @@ namespace teplouchetapp
                         for (int c = 0; c < attempts + 1; c++)
                         {
                             if (doStopProcess) goto END;
-                            if (dt.Rows[i][columnIndexResult].ToString().Length == 0) dt.Rows[i][columnIndexResult] = METER_WAIT;
+                            if (c == 0) dt.Rows[i][columnIndexResult] = METER_WAIT;
 
                             //служит также проверкой связи
                             if (Meter.SelectBySecondaryId(tmpNumb))
