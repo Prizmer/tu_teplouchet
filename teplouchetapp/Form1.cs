@@ -755,7 +755,10 @@ namespace teplouchetapp
             for (int k = 0; k < valList.Count; k++)
             {
                 //значение не может быть -1, а температура не может быть нулевой
-                if (valList[k] < 0 || (k > 1 && k < 5 && valList[k] == 0))
+                if (valList[k] < 0 || 
+                    (k == 2 && valList[k] < 40) || 
+                    (k == 3 && valList[k] < 25) || 
+                    (k == 4  && valList[k] == 0))
                 {
                     return false;
                 }
@@ -774,7 +777,7 @@ namespace teplouchetapp
 
             valList.Add((int)(4532 + (rand * 100)));
             valList.Add((int)(191 + (rand * 100)));
-            valList.Add((float)Math.Round(52.63 - (rand * 10), 2));
+            valList.Add((float)Math.Round(53.63 - (rand * 10), 2));
             valList.Add((float)Math.Round(40.91 - (rand * 10), 2));
             valList.Add((int)(8944 - (rand * 100)));
 
