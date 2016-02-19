@@ -85,10 +85,12 @@ namespace teplouchetapp
                 if (bDemoMode)
                 {
                     this.Text = this.Text.Replace(FORM_TEXT_DEMO_OFF, String.Empty);
+                    attempts = 3;
                 }
                 else
                 {
                     this.Text += FORM_TEXT_DEMO_OFF;
+                    attempts = 5;
                 }
             }
 
@@ -543,7 +545,7 @@ namespace teplouchetapp
                                     if (DemoMode)
                                     {
                                         //1.Записать в лог
-                                        string msg = String.Format("Счетчик № {0} в квартире {1} не ответил при тесте связи", dt.Rows[i][1], dt.Rows[i][0]);
+                                        string msg = String.Format("Счетчик № {0} в квартире {1} не ответил при тесте связи, вполнена подстановка", dt.Rows[i][1], dt.Rows[i][0]);
                                         WriteToLog(msg);
                                         //2.Подставить данные
                                         dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
@@ -551,6 +553,9 @@ namespace teplouchetapp
                                     else
                                     {
                                         dt.Rows[i][columnIndexResult] = METER_IS_OFFLINE;
+                                        //1.Записать в лог
+                                        string msg = String.Format("Счетчик № {0} в квартире {1} не ответил при тесте связи", dt.Rows[i][1], dt.Rows[i][0]);
+                                        WriteToLog(msg);
                                     }
                                 }
                             }
@@ -639,21 +644,26 @@ namespace teplouchetapp
                             if (c == 0) dt.Rows[i][columnIndexResult] = METER_WAIT;
                             if (c > 0) Thread.Sleep(200);
 
-                            bool secondTry = true;
-                            
-                        SELECTAGAIN:
                             //служит также проверкой связи
                             if (Meter.SelectBySecondaryId(tmpNumb))
                             {
                                 Thread.Sleep(50);
                                 if (Meter.ReadCurrentValues(paramCodes, out valList))
                                 {
-                                    if (!isDataCorrect(valList) && secondTry)
-                                    {
-                                        secondTry = false;
-                                        Thread.Sleep(200);
-                                        goto SELECTAGAIN;
+                                    if (!isDataCorrect(valList)){
+                                        if (DemoMode)
+                                        {
+                                            string msg = String.Format("Контрольная сумма ответа верна, но данные для счетчика № {0} в квартире {1} субъективно неверные, выполнена подстановка", dt.Rows[i][1], dt.Rows[i][0]);
+                                            getSampleMeterData(out valList);
+                                        }
+                                        else
+                                        {
+                                            //1. Записать в лог номер счетчика
+                                            string msg = String.Format("Контрольная сумма ответа верна, но данные для счетчика № {0} в квартире {1} субъективно неверные", dt.Rows[i][1], dt.Rows[i][0]);
+                                            WriteToLog(msg);
+                                        }
                                     }
+
 
                                     for (int j = 0; j < valList.Count; j++)
                                         dt.Rows[i][columnIndexResult + 1 + j] = valList[j];
@@ -665,7 +675,6 @@ namespace teplouchetapp
                                 {
                                     if (c < attempts)
                                     {
-                                        //не показывать "Повтор 1", "Повтор 2" и т.д. в демо режиме
                                         dt.Rows[i][columnIndexResult] = METER_WAIT + " " + (c + 1);
                                         continue;
                                     }
@@ -673,25 +682,23 @@ namespace teplouchetapp
                                     {
                                         //если тест связи пройден, а текущие не прочитаны, то в режиме разработчика,
                                         //тест связи будет пройден, а в остальных режимах нет.
-                                        if (DeveloperMode)
-                                        {
-                                            dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
-                                        }
-                                        else if (!DemoMode)
-                                        {
-                                            dt.Rows[i][columnIndexResult] = METER_IS_OFFLINE;
-                                        }
-                                        else
+                                        if (DemoMode)
                                         {
                                             dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
 
                                             //1. Записать в лог номер счетчика
-                                            string msg = String.Format("Счетчик № {0} в квартире {1} не ответил при опросе", dt.Rows[i][1], dt.Rows[i][0]);
+                                            string msg = String.Format("Счетчик № {0} в квартире {1} не ответил при опросе, выполнена подстановка", dt.Rows[i][1], dt.Rows[i][0]);
                                             WriteToLog(msg);
                                             //2. Подставить данные
                                             getSampleMeterData(out valList);
                                             for (int j = 0; j < valList.Count; j++)
                                                 dt.Rows[i][columnIndexResult + 1 + j] = valList[j];
+                                        }
+                                        else
+                                        {
+                                            dt.Rows[i][columnIndexResult] = METER_IS_OFFLINE;
+                                            string msg = String.Format("Счетчик № {0} в квартире {1}  не ответил при опросе", dt.Rows[i][1], dt.Rows[i][0]);
+                                            WriteToLog(msg);
                                         }
                                     }
                                 }
@@ -704,31 +711,36 @@ namespace teplouchetapp
                                 }
                                 else
                                 {
-                                    if (!DemoMode)
-                                    {
-                                        dt.Rows[i][columnIndexResult] = METER_IS_OFFLINE;
-                                    }
-                                    else
+
+
+                                    if (DemoMode)
                                     {
                                         dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
 
-                                        //1. Записать в лог номер счетчика
-                                        string msg = String.Format("Счетчик № {0} в квартире {1} не ответил при опросе", dt.Rows[i][1], dt.Rows[i][0]);
-                                        WriteToLog(msg);
                                         //2. Подставить данные
                                         getSampleMeterData(out valList);
                                         for (int j = 0; j < valList.Count; j++)
                                             dt.Rows[i][columnIndexResult + 1 + j] = valList[j];
+                                        //1. Записать в лог номер счетчика
+                                        string msg = String.Format("Счетчик № {0} в квартире {1} не прошел тест связи, выполнена подстановка", dt.Rows[i][1], dt.Rows[i][0]);
+                                        WriteToLog(msg);
+                                    }
+                                    else
+                                    {
+                                        dt.Rows[i][columnIndexResult] = METER_IS_OFFLINE;
+                                        //1. Записать в лог номер счетчика
+                                        string msg = String.Format("Счетчик № {0} в квартире {1} не прошел тест связи", dt.Rows[i][1], dt.Rows[i][0]);
+                                        WriteToLog(msg);
                                     }
                                 }
                             }
                         }
 
 
-                        if (!isDataCorrect(valList))
+                        if (DemoMode && !isDataCorrect(valList))
                         {
                             //1. Записать в лог номер счетчика
-                            string msg = String.Format("Контрольная сумма ответа верна, но данные для счетчика № {0} в квартире {1} субъективно неверные", dt.Rows[i][1], dt.Rows[i][0]);
+                            string msg = String.Format("Итоговые данные для счетчика № {0} в квартире {1} субъективно неверные, выполнена подстановка", dt.Rows[i][1], dt.Rows[i][0]);
                             WriteToLog(msg);
                             //2. Подставить данные
                             getSampleMeterData(out valList);
@@ -863,7 +875,7 @@ namespace teplouchetapp
         {
             if (e.Control && e.Shift && e.KeyCode == Keys.D0)
                 DeveloperMode = !DeveloperMode;
-            else if (e.Control && e.Shift && e.KeyCode == Keys.D9)
+            else if (e.Control && e.Shift && e.KeyCode == Keys.D)
                 DemoMode = !DemoMode;
         }
 
