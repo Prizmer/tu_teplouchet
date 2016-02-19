@@ -26,7 +26,8 @@ namespace teplouchetapp
                 FileStream fs = null;
                 try
                 {
-                    fs = new FileStream(@"teplouchetlog.pi", FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                    string curDir = AppDomain.CurrentDomain.BaseDirectory;
+                    fs = new FileStream(curDir + "teplouchetlog.pi", FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
                     sw = new StreamWriter(fs, Encoding.Default);
                     if (m_vport == null) sw.WriteLine(DateTime.Now.ToString() + ": Unknown port: adress: " + m_address + ": " + str);
                     else sw.WriteLine(DateTime.Now.ToString() + ": " + m_vport.GetName() + ": adress: " + m_address + ": " + str);

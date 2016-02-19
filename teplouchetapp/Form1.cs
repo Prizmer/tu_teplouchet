@@ -599,13 +599,14 @@ namespace teplouchetapp
 
         private void DeleteLogFiles()
         {
+            string curDir = AppDomain.CurrentDomain.BaseDirectory;
             try
             {
-                FileInfo fi = new FileInfo(@"teplouchetlog.txt");
+                FileInfo fi = new FileInfo(curDir + "teplouchetlog.pi");
                 if (fi.Exists)
                     fi.Delete();
 
-                fi = new FileInfo(@"metersinfo.pi");
+                fi = new FileInfo(curDir + "metersinfo.pi");
                 if (fi.Exists)
                     fi.Delete();
             }
@@ -844,7 +845,8 @@ namespace teplouchetapp
                 FileStream fs = null;
                 try
                 {
-                    fs = new FileStream(@"metersinfo.pi", FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                    string curDir = AppDomain.CurrentDomain.BaseDirectory;
+                    fs = new FileStream(curDir + "metersinfo.pi", FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
                     sw = new StreamWriter(fs, Encoding.Default);
                     sw.WriteLine(DateTime.Now.ToString() + ": " + str);
                     sw.Close();
