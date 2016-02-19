@@ -643,7 +643,14 @@ namespace teplouchetapp
                         {
                             if (doStopProcess) goto END;
                             if (c == 0) dt.Rows[i][columnIndexResult] = METER_WAIT;
-                            if (c > 0) Thread.Sleep(200);
+
+                            //возможно не снята селекция?
+                            Meter.UnselectAllMeters();
+
+                            if (c > 0)
+                                Thread.Sleep(200);
+                            else
+                                Thread.Sleep(50);
 
                             //служит также проверкой связи
                             if (Meter.SelectBySecondaryId(tmpNumb))
@@ -923,6 +930,7 @@ namespace teplouchetapp
                     string resStr = "Метод драйвера GetAllValues вернул false";
                     Meter.GetAllValues(out resStr);
                     richTextBox1.Text = resStr;
+                    Meter.UnselectAllMeters();
                 }
                 else
                 {
