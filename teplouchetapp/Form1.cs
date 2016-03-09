@@ -24,9 +24,12 @@ namespace teplouchetapp
             InitializeComponent();
 
             this.Text = FORM_TEXT_DEFAULT;
-            DeveloperMode = false;
+
+            DeveloperMode = true;
+            if (DeveloperMode) this.Height -= groupBox1.Height;
+
             InProgress = false;
-            DemoMode = true;
+            DemoMode = false;
             InputDataReady = false;
         }
 
@@ -899,8 +902,9 @@ namespace teplouchetapp
                 if (bDeveloperMode)
                 {
                     this.Text += FORM_TEXT_DEV_ON;
-                    groupBox1.Visible = true;
                     this.Height = this.Height + groupBox1.Height;
+                    groupBox1.Visible = true;
+
                 }
                 else
                 {
