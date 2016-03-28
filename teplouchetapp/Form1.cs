@@ -229,7 +229,7 @@ namespace teplouchetapp
                 }
                 else
                 {
-                    Vp = new TcpipPort(textBoxIp.Text, int.Parse(textBoxPort.Text), 500, 800, 1000);
+                    Vp = new TcpipPort(textBoxIp.Text, int.Parse(textBoxPort.Text), 0, read_timeout, 0);
                 }
 
                 uint mAddr = 0xFD;

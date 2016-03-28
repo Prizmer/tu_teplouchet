@@ -271,7 +271,7 @@
             this.textBoxPort.Name = "textBoxPort";
             this.textBoxPort.Size = new System.Drawing.Size(63, 26);
             this.textBoxPort.TabIndex = 54;
-            this.textBoxPort.Text = "4001";
+            this.textBoxPort.Text = "4003";
             // 
             // textBoxIp
             // 
@@ -317,6 +317,7 @@
             this.textBox1.Name = "textBox1";
             this.textBox1.Size = new System.Drawing.Size(200, 26);
             this.textBox1.TabIndex = 49;
+            this.textBox1.Text = "20133295";
             // 
             // pictureBoxLogo
             // 

@@ -30,7 +30,7 @@ namespace teplouchetapp
         private string m_address = "127.0.0.1";
         private int m_port = 80;
         private ushort m_write_timeout = 100;
-        private ushort m_read_timeout = 100;
+        private ushort m_read_timeout = 800;
         private int m_delay_between_sending = 100;
 
         public string GetName()
@@ -179,15 +179,15 @@ namespace teplouchetapp
                 // Create a TCP/IP  socket.
                 Socket sender = new Socket(AddressFamily.InterNetwork,
                     SocketType.Stream, ProtocolType.Tcp);
-                sender.ReceiveTimeout = 5000;
+                sender.ReceiveTimeout = m_read_timeout;
 
                 // Connect the socket to the remote endpoint. Catch any errors.
                 try
                 {
                     sender.Connect(remoteEP);
 
-                   // Form1._Form1.WriteToClientLog(String.Format("Socket connected to {0}",
-                      //  sender.RemoteEndPoint.ToString()));
+                    WriteToLog(String.Format("Socket connected to {0}",
+                        sender.RemoteEndPoint.ToString()));
 
                     // Send the data through the socket.
                     int bytesSent = sender.Send(out_buffer);
@@ -202,37 +202,33 @@ namespace teplouchetapp
 
                             for (int i = 0; i < bytesRec; i++)
                                 receivedBytes.Add(bytes[i]);
-
-                            if (bytesRec == 0)
-                                break;
-
                         }
                         catch (Exception ex)
                         {
-                          //  Form1._Form1.WriteToClientLog("Timeout");
+                            WriteToLog("Timeout");
                             break;
                         }
                     }
 
-                    //  Form1._Form1.WriteToClientLog("Bytes received: " + BitConverter.ToString(receivedBytes.ToArray()).Replace("-", " "));
-
                     // Release the socket.
                     sender.Shutdown(SocketShutdown.Both);
                     sender.Close();
-                    //Form1._Form1.WriteToClientLog("Disconected from server");
 
+                    WriteToLog("Disconected from server");
                 }
                 catch (Exception exx)
                 {
-                  //  Form1._Form1.WriteToClientLog("Connection exception: " + exx.Message);
+                    WriteToLog("Connection exception: " + exx.Message);
                 }
 
             }
             catch (Exception e)
             {
-               // Form1._Form1.WriteToClientLog("Common exception: " + e.Message);
+                WriteToLog("Common exception: " + e.Message);
             }
 
+            WriteToLog("Totally bytes received: " + BitConverter.ToString(receivedBytes.ToArray()).Replace("-", " "));
+            
             in_buffer = receivedBytes.ToArray();
             return receivedBytes.Count;
         }
@@ -275,7 +271,7 @@ namespace teplouchetapp
 
         public void ClosePort()
         {
-            throw new NotImplementedException();
+            //
         }
     }
 
