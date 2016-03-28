@@ -377,8 +377,6 @@ namespace teplouchetapp
         {
             recordsBytesList = new List<byte>();
 
-            /*данные проходящие по протоколу m-bus не нужно шифровать, а также не нужно
-             применять отрицание для зарезервированных символов*/
             byte cmd = 0x7b;
             byte CS = (byte)(cmd + m_addr);
 

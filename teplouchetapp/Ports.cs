@@ -6,6 +6,7 @@ using System.Threading;
 
 using System.IO;
 using System.IO.Ports;
+using System.Net;
 using System.Net.Sockets;
 
 //при переносе в сервер опрос не забыть поменять namespace
@@ -56,7 +57,7 @@ namespace teplouchetapp
             return 0;
         }
 
-        public int WriteReadData(FindPacketSignature func, byte[] out_buffer, ref byte[] in_buffer, int out_length, int target_in_length, uint pos_count_data_size = 0, uint size_data = 0, uint header_size = 0)
+        public int WriteReadData2(FindPacketSignature func, byte[] out_buffer, ref byte[] in_buffer, int out_length, int target_in_length, uint pos_count_data_size = 0, uint size_data = 0, uint header_size = 0)
         {
             int reading_size = 0;
             using (TcpClient tcp = new TcpClient())
@@ -162,6 +163,80 @@ namespace teplouchetapp
             return reading_size;
         }
 
+        public int WriteReadData(FindPacketSignature func, byte[] out_buffer, ref byte[] in_buffer, int out_length, int target_in_length, uint pos_count_data_size = 0, uint size_data = 0, uint header_size = 0)
+        {
+            // Data buffer for incoming data.
+            byte[] bytes = new byte[1024];
+            List<byte> receivedBytes = new List<byte>();
+
+            // Connect to a remote device.
+            try
+            {
+                // Establish the remote endpoint for the socket.
+                IPAddress ipaddr = IPAddress.Parse(m_address.ToString());
+                IPEndPoint remoteEP = new IPEndPoint(ipaddr, m_port);
+
+                // Create a TCP/IP  socket.
+                Socket sender = new Socket(AddressFamily.InterNetwork,
+                    SocketType.Stream, ProtocolType.Tcp);
+                sender.ReceiveTimeout = 5000;
+
+                // Connect the socket to the remote endpoint. Catch any errors.
+                try
+                {
+                    sender.Connect(remoteEP);
+
+                   // Form1._Form1.WriteToClientLog(String.Format("Socket connected to {0}",
+                      //  sender.RemoteEndPoint.ToString()));
+
+                    // Send the data through the socket.
+                    int bytesSent = sender.Send(out_buffer);
+
+                    while (true)
+                    {
+                        bytes = new byte[1024];
+                        try
+                        {
+                            // Receive the response from the remote device.
+                            int bytesRec = sender.Receive(bytes);
+
+                            for (int i = 0; i < bytesRec; i++)
+                                receivedBytes.Add(bytes[i]);
+
+                            if (bytesRec == 0)
+                                break;
+
+                        }
+                        catch (Exception ex)
+                        {
+                          //  Form1._Form1.WriteToClientLog("Timeout");
+                            break;
+                        }
+                    }
+
+                    //  Form1._Form1.WriteToClientLog("Bytes received: " + BitConverter.ToString(receivedBytes.ToArray()).Replace("-", " "));
+
+                    // Release the socket.
+                    sender.Shutdown(SocketShutdown.Both);
+                    sender.Close();
+                    //Form1._Form1.WriteToClientLog("Disconected from server");
+
+                }
+                catch (Exception exx)
+                {
+                  //  Form1._Form1.WriteToClientLog("Connection exception: " + exx.Message);
+                }
+
+            }
+            catch (Exception e)
+            {
+               // Form1._Form1.WriteToClientLog("Common exception: " + e.Message);
+            }
+
+            in_buffer = receivedBytes.ToArray();
+            return receivedBytes.Count;
+        }
+        
         public void WriteToLog(string str)
         {
             if (false)
