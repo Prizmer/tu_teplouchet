@@ -337,9 +337,10 @@ namespace teplouchetapp
             {
                 m_Port = new SerialPort(m_name, m_baudrate, m_parity, m_data_bits, m_stop_bits);
                 m_Port.WriteTimeout = m_write_timeout;
-                //m_read_timeout = m_read_timeout;
+                m_Port.ReadTimeout = m_read_timeout;
+
                 /*ELF: для работы с elf108*/
-                m_Port.DtrEnable = true;
+                m_Port.DtrEnable = sp.DtrEnable;
                 //m_Port.RtsEnable = true;
             }
             catch (Exception ex)
