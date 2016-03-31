@@ -319,7 +319,7 @@ namespace teplouchetapp
             }
         }
        
-        public ComPort(SerialPort sp, byte attempts, ushort read_timout)
+        public ComPort(SerialPort sp, byte attempts, ushort read_timout, ushort write_timeout)
         {
 
             m_attemts = attempts;
@@ -329,10 +329,15 @@ namespace teplouchetapp
             m_parity = sp.Parity;
             m_stop_bits = sp.StopBits;
             m_read_timeout = read_timout;
+            m_write_timeout = write_timeout;
+
+            
 
             try
             {
                 m_Port = new SerialPort(m_name, m_baudrate, m_parity, m_data_bits, m_stop_bits);
+                m_Port.WriteTimeout = m_write_timeout;
+                //m_read_timeout = m_read_timeout;
                 /*ELF: для работы с elf108*/
                 m_Port.DtrEnable = true;
                 //m_Port.RtsEnable = true;

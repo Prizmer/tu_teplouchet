@@ -212,6 +212,7 @@ namespace teplouchetapp
             {
                 byte attempts = 1;
                 ushort read_timeout = (ushort)numericUpDownComReadTimeout.Value;
+                ushort write_timeout = (ushort)numericUpDownComWriteTimeout.Value;
 
                 if (!checkBoxTcp.Checked)
                 {
@@ -223,13 +224,12 @@ namespace teplouchetapp
                     m_Port.StopBits = (StopBits)int.Parse(ConfigurationSettings.AppSettings["stopbits"]);
                     m_Port.DtrEnable = bool.Parse(ConfigurationSettings.AppSettings["dtr"]);
 
-
                     //meters initialized by secondary id (factory n) respond to 0xFD primary addr
-                    Vp = new ComPort(m_Port, attempts, read_timeout);
+                    Vp = new ComPort(m_Port, attempts, read_timeout, write_timeout);
                 }
                 else
                 {
-                    Vp = new TcpipPort(textBoxIp.Text, int.Parse(textBoxPort.Text), 0, read_timeout, 0);
+                    Vp = new TcpipPort(textBoxIp.Text, int.Parse(textBoxPort.Text), write_timeout, read_timeout, 0);
                 }
 
                 uint mAddr = 0xFD;
@@ -303,9 +303,15 @@ namespace teplouchetapp
             //привязываются здесь, чтобы можно было выше задать значения без вызова обработчиков
             comboBoxComPorts.SelectedIndexChanged += new EventHandler(comboBoxComPorts_SelectedIndexChanged);
             numericUpDownComReadTimeout.ValueChanged +=new EventHandler(numericUpDownComReadTimeout_ValueChanged);
+            numericUpDownComWriteTimeout.ValueChanged += new EventHandler(numericUpDownComWriteTimeout_ValueChanged);
             
             meterPinged += new EventHandler(Form1_meterPinged);
             pollingEnd += new EventHandler(Form1_pollingEnd);
+        }
+
+        void numericUpDownComWriteTimeout_ValueChanged(object sender, EventArgs e)
+        {
+            setVirtualSerialPort();
         }
 
         DataTable dt = new DataTable("meters");
