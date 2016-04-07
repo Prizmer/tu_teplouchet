@@ -702,7 +702,7 @@ namespace teplouchetapp
                                         {
                                             dt.Rows[i][columnIndexResult] = METER_WAIT + " " + (c + 1);
                                             Meter.UnselectAllMeters();
-                                            Thread.Sleep(2000);
+                                            Thread.Sleep(10000);
                                             continue;
                                         }
                                     }
