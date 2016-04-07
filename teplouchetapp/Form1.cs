@@ -618,6 +618,10 @@ namespace teplouchetapp
                 fi = new FileInfo(curDir + "metersinfo.pi");
                 if (fi.Exists)
                     fi.Delete();
+
+                fi = new FileInfo(curDir + "datainfo.pi");
+                if (fi.Exists)
+                    fi.Delete();
             }
             catch (Exception ex)
             {
