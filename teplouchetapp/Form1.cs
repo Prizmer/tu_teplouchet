@@ -693,6 +693,11 @@ namespace teplouchetapp
                                         WriteToLog(msg);
                                         WriteToSeparateLog(msg + ": " + String.Join(", ", valList.ToArray()));
 
+                                        string resStr = "";
+                                        Meter.GetAllValues(out resStr);
+                                        string msg2 = String.Format("Пробуем служебный метод драйвера (GetAllValues): {0}", resStr);
+                                        WriteToSeparateLog(msg2);
+
                                         if (c != attempts)
                                         {
                                             dt.Rows[i][columnIndexResult] = METER_WAIT + " " + (c + 1);
