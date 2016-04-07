@@ -687,9 +687,13 @@ namespace teplouchetapp
                                     {
                                         string msg = String.Format("Показания температур счетчика № {0} в квартире {1} субъективно неверные (isTemperatureCorrect == false)", dt.Rows[i][1], dt.Rows[i][0]);
                                         WriteToLog(msg);
-                                        WriteToSeparateLog(msg + ": " + String.Join(", ", valList.ToArray()));                                       
-                                        dt.Rows[i][columnIndexResult] = METER_WAIT + " " + (c + 1);
-                                        continue;
+                                        WriteToSeparateLog(msg + ": " + String.Join(", ", valList.ToArray()));
+
+                                        if (c != attempts)
+                                        {
+                                            dt.Rows[i][columnIndexResult] = METER_WAIT + " " + (c + 1);
+                                            continue;
+                                        }
                                     }
 
                                     for (int j = 0; j < valList.Count; j++)
@@ -811,7 +815,7 @@ namespace teplouchetapp
             for (int k = 0; k < valList.Count; k++)
             {
                 //температура не может быть нулевой
-                if ((k == 2 && valList[k] < 40) || (k == 3 && valList[k] < 25))
+                if ((k == 2 && valList[k] == 0) || (k == 3 && valList[k] == 0))
                 {
                     return false;
                 }
