@@ -670,17 +670,27 @@ namespace teplouchetapp
                                     if (!isDataCorrect(valList)){
                                         if (DemoMode)
                                         {
-                                            string msg = String.Format("Контрольная сумма ответа верна, но данные для счетчика № {0} в квартире {1} субъективно неверные, выполнена подстановка", dt.Rows[i][1], dt.Rows[i][0]);
+                                            string msg = String.Format("Данные для счетчика № {0} в квартире {1} субъективно неверные (isDataCorrect == false), выполнена подстановка", dt.Rows[i][1], dt.Rows[i][0]);
                                             getSampleMeterData(out valList);
+                                            WriteToLog(msg);
                                         }
                                         else
                                         {
                                             //1. Записать в лог номер счетчика
-                                            string msg = String.Format("Контрольная сумма ответа верна, но данные для счетчика № {0} в квартире {1} субъективно неверные", dt.Rows[i][1], dt.Rows[i][0]);
+                                            string msg = String.Format("Данные для счетчика № {0} в квартире {1} субъективно неверные (isDataCorrect == false)", dt.Rows[i][1], dt.Rows[i][0]);
                                             WriteToLog(msg);
+                                            WriteToSeparateLog(msg + ": " + String.Join(", ", valList.ToArray()));     
                                         }
                                     }
 
+                                    if (!isTemperatureCorrect(valList))
+                                    {
+                                        string msg = String.Format("Показания температур счетчика № {0} в квартире {1} субъективно неверные (isTemperatureCorrect == false)", dt.Rows[i][1], dt.Rows[i][0]);
+                                        WriteToLog(msg);
+                                        WriteToSeparateLog(msg + ": " + String.Join(", ", valList.ToArray()));                                       
+                                        dt.Rows[i][columnIndexResult] = METER_WAIT + " " + (c + 1);
+                                        continue;
+                                    }
 
                                     for (int j = 0; j < valList.Count; j++)
                                         dt.Rows[i][columnIndexResult + 1 + j] = valList[j];
@@ -786,8 +796,22 @@ namespace teplouchetapp
                 //значение не может быть -1, а температура не может быть нулевой
                 if (valList[k] < 0 || 
                     (k == 2 && valList[k] < 40) || 
-                    (k == 3 && valList[k] < 25) || 
+                    (k == 3 && valList[k] < 10) || 
                     (k == 4  && valList[k] == 0))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        bool isTemperatureCorrect(List<float> valList)
+        {
+            for (int k = 0; k < valList.Count; k++)
+            {
+                //температура не может быть нулевой
+                if ((k == 2 && valList[k] < 40) || (k == 3 && valList[k] < 25))
                 {
                     return false;
                 }
@@ -886,7 +910,39 @@ namespace teplouchetapp
                 }
             }
         }
-
+        public void WriteToSeparateLog(string str, bool doWrite = true)
+        {
+            if (doWrite)
+            {
+                StreamWriter sw = null;
+                FileStream fs = null;
+                try
+                {
+                    string curDir = AppDomain.CurrentDomain.BaseDirectory;
+                    fs = new FileStream(curDir + "datainfo.pi", FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+                    sw = new StreamWriter(fs, Encoding.Default);
+                    sw.WriteLine(DateTime.Now.ToString() + ": " + str);
+                    sw.Close();
+                    fs.Close();
+                }
+                catch
+                {
+                }
+                finally
+                {
+                    if (sw != null)
+                    {
+                        sw.Close();
+                        sw = null;
+                    }
+                    if (fs != null)
+                    {
+                        fs.Close();
+                        fs = null;
+                    }
+                }
+            }
+        }
         #region Панель разработчика
 
         private void Form1_KeyDown(object sender, KeyEventArgs e)
