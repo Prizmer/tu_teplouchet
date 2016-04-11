@@ -50,7 +50,10 @@
             this.label1 = new System.Windows.Forms.Label();
             this.checkBoxPollOffline = new System.Windows.Forms.CheckBox();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
+            this.numericUpDownComWriteTimeout = new System.Windows.Forms.NumericUpDown();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.label4 = new System.Windows.Forms.Label();
+            this.label3 = new System.Windows.Forms.Label();
             this.checkBoxTcp = new System.Windows.Forms.CheckBox();
             this.textBoxPort = new System.Windows.Forms.TextBox();
             this.textBoxIp = new System.Windows.Forms.TextBox();
@@ -59,15 +62,12 @@
             this.label2 = new System.Windows.Forms.Label();
             this.textBox1 = new System.Windows.Forms.TextBox();
             this.pictureBoxLogo = new System.Windows.Forms.PictureBox();
-            this.label3 = new System.Windows.Forms.Label();
-            this.numericUpDownComWriteTimeout = new System.Windows.Forms.NumericUpDown();
-            this.label4 = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.dgv1)).BeginInit();
             this.statusStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownComReadTimeout)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownComWriteTimeout)).BeginInit();
             this.groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxLogo)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownComWriteTimeout)).BeginInit();
             this.SuspendLayout();
             // 
             // buttonImport
@@ -270,6 +270,35 @@
             this.checkBoxPollOffline.UseVisualStyleBackColor = true;
             this.checkBoxPollOffline.CheckedChanged += new System.EventHandler(this.checkBoxPollOffline_CheckedChanged);
             // 
+            // numericUpDownComWriteTimeout
+            // 
+            this.numericUpDownComWriteTimeout.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.numericUpDownComWriteTimeout.Increment = new decimal(new int[] {
+            100,
+            0,
+            0,
+            0});
+            this.numericUpDownComWriteTimeout.Location = new System.Drawing.Point(481, 53);
+            this.numericUpDownComWriteTimeout.Maximum = new decimal(new int[] {
+            2000,
+            0,
+            0,
+            0});
+            this.numericUpDownComWriteTimeout.Minimum = new decimal(new int[] {
+            50,
+            0,
+            0,
+            0});
+            this.numericUpDownComWriteTimeout.Name = "numericUpDownComWriteTimeout";
+            this.numericUpDownComWriteTimeout.Size = new System.Drawing.Size(69, 22);
+            this.numericUpDownComWriteTimeout.TabIndex = 56;
+            this.toolTip1.SetToolTip(this.numericUpDownComWriteTimeout, "Время ожидания ответа одного счетчика");
+            this.numericUpDownComWriteTimeout.Value = new decimal(new int[] {
+            800,
+            0,
+            0,
+            0});
+            // 
             // groupBox1
             // 
             this.groupBox1.Controls.Add(this.label4);
@@ -288,6 +317,24 @@
             this.groupBox1.TabIndex = 49;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Индивидуальный блок";
+            // 
+            // label4
+            // 
+            this.label4.AutoSize = true;
+            this.label4.Location = new System.Drawing.Point(477, 28);
+            this.label4.Name = "label4";
+            this.label4.Size = new System.Drawing.Size(128, 20);
+            this.label4.TabIndex = 58;
+            this.label4.Text = "Таймаут записи";
+            // 
+            // label3
+            // 
+            this.label3.AutoSize = true;
+            this.label3.Location = new System.Drawing.Point(556, 57);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(28, 20);
+            this.label3.TabIndex = 57;
+            this.label3.Text = "мс";
             // 
             // checkBoxTcp
             // 
@@ -357,62 +404,15 @@
             // 
             this.pictureBoxLogo.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
             this.pictureBoxLogo.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.pictureBoxLogo.Image = global::teplouchetapp.Properties.Resources.pi_logo;
+            this.pictureBoxLogo.Image = global::teplouchetapp.Properties.Resources.pi_logo_2;
             this.pictureBoxLogo.InitialImage = null;
-            this.pictureBoxLogo.Location = new System.Drawing.Point(664, 6);
+            this.pictureBoxLogo.Location = new System.Drawing.Point(834, 6);
             this.pictureBoxLogo.Name = "pictureBoxLogo";
-            this.pictureBoxLogo.Size = new System.Drawing.Size(260, 88);
-            this.pictureBoxLogo.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
+            this.pictureBoxLogo.Size = new System.Drawing.Size(90, 88);
+            this.pictureBoxLogo.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.pictureBoxLogo.TabIndex = 50;
             this.pictureBoxLogo.TabStop = false;
             this.pictureBoxLogo.Click += new System.EventHandler(this.pictureBoxLogo_Click);
-            // 
-            // label3
-            // 
-            this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(556, 57);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(28, 20);
-            this.label3.TabIndex = 57;
-            this.label3.Text = "мс";
-            // 
-            // numericUpDownComWriteTimeout
-            // 
-            this.numericUpDownComWriteTimeout.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            this.numericUpDownComWriteTimeout.Increment = new decimal(new int[] {
-            100,
-            0,
-            0,
-            0});
-            this.numericUpDownComWriteTimeout.Location = new System.Drawing.Point(481, 53);
-            this.numericUpDownComWriteTimeout.Maximum = new decimal(new int[] {
-            2000,
-            0,
-            0,
-            0});
-            this.numericUpDownComWriteTimeout.Minimum = new decimal(new int[] {
-            50,
-            0,
-            0,
-            0});
-            this.numericUpDownComWriteTimeout.Name = "numericUpDownComWriteTimeout";
-            this.numericUpDownComWriteTimeout.Size = new System.Drawing.Size(69, 22);
-            this.numericUpDownComWriteTimeout.TabIndex = 56;
-            this.toolTip1.SetToolTip(this.numericUpDownComWriteTimeout, "Время ожидания ответа одного счетчика");
-            this.numericUpDownComWriteTimeout.Value = new decimal(new int[] {
-            800,
-            0,
-            0,
-            0});
-            // 
-            // label4
-            // 
-            this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(477, 28);
-            this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(128, 20);
-            this.label4.TabIndex = 58;
-            this.label4.Text = "Таймаут записи";
             // 
             // Form1
             // 
@@ -445,10 +445,10 @@
             this.statusStrip1.ResumeLayout(false);
             this.statusStrip1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownComReadTimeout)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownComWriteTimeout)).EndInit();
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxLogo)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownComWriteTimeout)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
