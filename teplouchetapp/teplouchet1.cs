@@ -571,7 +571,9 @@ namespace teplouchetapp
                         return true;
                     }
 
-                WriteToLog("SelectBySecondaryId: в ответе не найден байт подтверждения 0xE5 для счетчика " + current_secondary_id_str);
+                string msg = String.Format("SelectBySecondaryId: в ответе не найден байт подтверждения 0xE5 для счетчика {0}: [{1}]", current_secondary_id_str,
+                    String.Join(",", inp));
+                WriteToLog(msg);
                 return false;
 
             }
