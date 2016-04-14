@@ -22,6 +22,7 @@ namespace teplouchetapp
         public Form1()
         {
             InitializeComponent();
+            _Form1 = this;
 
             this.Text = FORM_TEXT_DEFAULT;
 
@@ -32,6 +33,8 @@ namespace teplouchetapp
             DemoMode = false;
             InputDataReady = false;
         }
+
+        Form1 _Form1;
 
         //при опросе или тесте связи
         bool bInProcess = false;
@@ -602,6 +605,8 @@ namespace teplouchetapp
                 return;
             }
 
+            loadXlsFile();
+
             InProgress = true;
             doStopProcess = false;
 
@@ -687,6 +692,10 @@ namespace teplouchetapp
             {
                 int i = tmpRowsList[m];
 
+                //подкрасим строку
+                DataGridViewRow currentRow = this._Form1.dgv1.Rows[i];
+                currentRow.DefaultCellStyle.BackColor = Color.FromArgb(119, 221, 119);
+
                 int tmpNumb = 0;
                 object o = dt.Rows[i][columnIndexFactory];
                 object oColResult = dt.Rows[i][columnIndexResult];
@@ -701,7 +710,12 @@ namespace teplouchetapp
                         List<float> valList = new List<float>();
                         for (int c = 0; c < attempts + 1; c++)
                         {
-                            if (doStopProcess) goto END;
+                            if (doStopProcess)
+                            {
+                                currentRow.DefaultCellStyle.BackColor = Color.White;
+                                goto END;
+                            } 
+
                             if (c == 0) dt.Rows[i][columnIndexResult] = METER_WAIT;
 
                             //если вдруг не снята селекция с предыдущего счетчика, запросим ее снятие повторно
@@ -851,10 +865,14 @@ namespace teplouchetapp
                                 }
                             }
                         }
+
+                        currentRow.DefaultCellStyle.BackColor = Color.White;
                 }
 
-                Meter.UnselectAllMeters();
 
+
+                Meter.UnselectAllMeters();
+                currentRow.DefaultCellStyle.BackColor = Color.White;
                 if (doStopProcess)
                     break;
             }
@@ -869,6 +887,8 @@ namespace teplouchetapp
 
                 pollMeters((object)pmaOutp);
             }
+
+
 
         END:
             Invoke(pollingEnd);

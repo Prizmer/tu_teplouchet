@@ -232,7 +232,7 @@
             0,
             0});
             this.numericUpDownComReadTimeout.Minimum = new decimal(new int[] {
-            400,
+            600,
             0,
             0,
             0});
@@ -457,7 +457,6 @@
         #endregion
 
         private System.Windows.Forms.Button buttonImport;
-        private System.Windows.Forms.DataGridView dgv1;
         private System.Windows.Forms.OpenFileDialog ofd1;
         private System.Windows.Forms.Button buttonPing;
         private System.Windows.Forms.SaveFileDialog sfd1;
@@ -485,6 +484,7 @@
         private System.Windows.Forms.Label label4;
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.NumericUpDown numericUpDownComWriteTimeout;
+        public System.Windows.Forms.DataGridView dgv1;
     }
 }
 
