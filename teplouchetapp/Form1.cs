@@ -88,12 +88,10 @@ namespace teplouchetapp
                 if (bDemoMode)
                 {
                     this.Text = this.Text.Replace(FORM_TEXT_DEMO_OFF, String.Empty);
-                    attempts = 3;
                 }
                 else
                 {
                     this.Text += FORM_TEXT_DEMO_OFF;
-                    attempts = 5;
                 }
             }
 
@@ -143,6 +141,7 @@ namespace teplouchetapp
             const string METER_IS_OFFLINE = "Нет связи";
             const string METER_WAIT = "Ждите";
             const string REPEAT_REQUEST = "Повтор";
+            const string METER_IS_BUSY = "Занят";
 
             const string FORM_TEXT_DEFAULT = "ТЕПЛОУЧЕТ - программа опроса v.2.3";
             const string FORM_TEXT_DEMO_OFF = " - демо режим ОТКЛЮЧЕН";
@@ -667,7 +666,7 @@ namespace teplouchetapp
         {
             PollMetersArguments pmaInp = (PollMetersArguments)pollMetersArgs;
             DataTable dt = pmaInp.dt;
-            List<int> incorrectRows = pmaInp.incorrectRows;
+            List<int> inpRowsList = pmaInp.incorrectRows;
 
             int columnIndexFactory = 1;
             int columnIndexResult = 2;
@@ -675,18 +674,18 @@ namespace teplouchetapp
 
             //если список строк не определен, источник заполняется номерами строк доступных
             //в таблице, иначе - определенными номерами 
-            List<int> rowsList = new List<int>();
-            if (incorrectRows == null)
-                for (int i = 1; i < dt.Rows.Count; i++) rowsList.Add(i);
+            List<int> tmpRowsList = new List<int>();
+            if (inpRowsList == null)
+                for (int i = 1; i < dt.Rows.Count; i++) tmpRowsList.Add(i);
             else
-                rowsList = incorrectRows;
+                tmpRowsList = inpRowsList;
 
 
             List<string> factoryNumbers = new List<string>();
 
-            for (int m = 0; m < rowsList.Count; m++)
+            for (int m = 0; m < tmpRowsList.Count; m++)
             {
-                int i = rowsList[m];
+                int i = tmpRowsList[m];
 
                 int tmpNumb = 0;
                 object o = dt.Rows[i][columnIndexFactory];
@@ -712,9 +711,12 @@ namespace teplouchetapp
                             //выбираем счетчик по серийному номеру (служит также проверкой связи) - в случае успеха приходит 0xE5
                             if (Meter.SelectBySecondaryId(tmpNumb))
                             {
+                                //СЧЕТЧИК НА СВЯЗИ
                                 Thread.Sleep(50);
                                 if (Meter.ReadCurrentValues(paramCodes, out valList))
                                 {
+                                    //ДАННЫЕ ПРОЧИТАНЫ
+
                                     //Если данные получены успешно, не факт что они верные субъективно. Например, со счетчиков ТЕПЛОУЧЕТ
                                     //иногда приходят нулевые показания температур (КС правильная). Однако через некоторое время, с тогоже
                                     //счетчика приходят верные значения температур. Эти ситуации необходимо обрабатывать.
@@ -725,39 +727,35 @@ namespace teplouchetapp
                                             string msg = String.Format("Данные для счетчика № {0} в квартире {1} субъективно неверные (isDataCorrect == false), выполнена подстановка", dt.Rows[i][1], dt.Rows[i][0]);
                                             getSampleMeterData(out valList);
                                             WriteToLog(msg);
+                                            WriteToSeparateLog(msg + ": " + String.Join(", ", valList.ToArray()));
                                         }
-                                        else
+                                        else if (inpRowsList == null)
                                         {
-                                            //1. Записать в лог номер счетчика
+                                            //если данные субъективно неверны: заносим строку в список повторно опрашиваемых приборов,
+                                            //пишем - ждите и переходим к следующему прибору
                                             string msg = String.Format("Данные для счетчика № {0} в квартире {1} субъективно неверные (isDataCorrect == false)", dt.Rows[i][1], dt.Rows[i][0]);
                                             WriteToLog(msg);
                                             WriteToSeparateLog(msg + ": " + String.Join(", ", valList.ToArray()));
+
+                                            dt.Rows[i][columnIndexResult] = METER_IS_BUSY;
+                                            rowsWithIncorrectResults.Add(i);
+                                            break;
                                         }
                                     }
-
-                                    if (!isTemperatureCorrect(valList))
-                                    {
-                                        //если температура неверна: заносим строку в список повторно опрашиваемых приборов,
-                                        //пишем - ждите и переходим к следующему прибору
-                                        string msg = String.Format("Показания температур счетчика № {0} в квартире {1} субъективно неверные (isTemperatureCorrect == false)", dt.Rows[i][1], dt.Rows[i][0]);
-                                        WriteToLog(msg);
-                                        WriteToSeparateLog(msg + ": " + String.Join(", ", valList.ToArray()));
-
-                                        dt.Rows[i][columnIndexResult] = METER_WAIT;
-                                        rowsWithIncorrectResults.Add(i);
-                                        break;
-                                    }
-
 
                                     //все нормально, выводим данные которые пришли
                                     for (int k = 0; k < valList.Count; k++)
                                         dt.Rows[i][columnIndexResult + 1 + k] = valList[k];
+
+                                    Invoke(meterPinged);
 
                                     dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
                                     break;
                                 }
                                 else
                                 {
+                                    //ДАННЫЕ НЕ ПРОЧИТАНЫ
+
                                     if (c < attempts)
                                     {
                                         dt.Rows[i][columnIndexResult] = METER_WAIT + " " + (c + 1);
@@ -765,31 +763,55 @@ namespace teplouchetapp
                                     }
                                     else
                                     {
-                                        //если тест связи пройден, а текущие не прочитаны, то в режиме разработчика,
-                                        //тест связи будет пройден, а в остальных режимах нет.
                                         if (DemoMode)
                                         {
-                                            dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
-
                                             //1. Записать в лог номер счетчика
                                             string msg = String.Format("Счетчик № {0} в квартире {1} не ответил при опросе, выполнена подстановка", dt.Rows[i][1], dt.Rows[i][0]);
                                             WriteToLog(msg);
+                                            WriteToSeparateLog(msg);
                                             //2. Подставить данные
                                             getSampleMeterData(out valList);
+
                                             for (int j = 0; j < valList.Count; j++)
                                                 dt.Rows[i][columnIndexResult + 1 + j] = valList[j];
+
+                                            Invoke(meterPinged);
+                                            dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
+                                            break;
                                         }
                                         else
                                         {
-                                            dt.Rows[i][columnIndexResult] = METER_IS_OFFLINE;
+   
                                             string msg = String.Format("Счетчик № {0} в квартире {1}  не ответил при опросе", dt.Rows[i][1], dt.Rows[i][0]);
                                             WriteToLog(msg);
+                                            WriteToSeparateLog(msg);
+                                            if (inpRowsList == null)
+                                            {
+                                                dt.Rows[i][columnIndexResult] = METER_IS_BUSY;
+                                                rowsWithIncorrectResults.Add(i);
+                                            }
+                                            else
+                                            {
+                                                dt.Rows[i][columnIndexResult] = METER_IS_OFFLINE;
+                                                Invoke(meterPinged);
+                                            }
                                         }
                                     }
                                 }
+
+                                //финальная проверка и подстановка при необходимости
+                                //if (DemoMode && !isDataCorrect(valList))
+                                //{
+                                //    //1. Записать в лог номер счетчика
+                                //    string msg = String.Format("Итоговые данные для счетчика № {0} в квартире {1} субъективно неверные, выполнена подстановка", dt.Rows[i][1], dt.Rows[i][0]);
+                                //    WriteToLog(msg);
+                                //    //2. Подставить данные
+                                //    getSampleMeterData(out valList);
+                                //}
                             }
                             else
                             {
+                                //СЧЕТЧИК НЕ ОТВЕЧАЕТ (НЕ НА СВЯЗИ)
                                 if (c < attempts)
                                 {
                                     dt.Rows[i][columnIndexResult] = METER_WAIT + " " + (c + 1);
@@ -798,8 +820,6 @@ namespace teplouchetapp
                                 {
                                     if (DemoMode)
                                     {
-                                        dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
-
                                         //2. Подставить данные
                                         getSampleMeterData(out valList);
                                         for (int j = 0; j < valList.Count; j++)
@@ -807,50 +827,51 @@ namespace teplouchetapp
                                         //1. Записать в лог номер счетчика
                                         string msg = String.Format("Счетчик № {0} в квартире {1} не прошел тест связи, выполнена подстановка", dt.Rows[i][1], dt.Rows[i][0]);
                                         WriteToLog(msg);
+
+                                        Invoke(meterPinged);
+                                        dt.Rows[i][columnIndexResult] = METER_IS_ONLINE;
+                                        break;
                                     }
                                     else
                                     {
-                                        dt.Rows[i][columnIndexResult] = METER_IS_OFFLINE;
-                                        //1. Записать в лог номер счетчика
-                                        string msg = String.Format("Счетчик № {0} в квартире {1} не прошел тест связи", dt.Rows[i][1], dt.Rows[i][0]);
-                                        WriteToLog(msg);
+                                        if (inpRowsList == null)
+                                        {
+                                            dt.Rows[i][columnIndexResult] = METER_IS_BUSY;
+                                            rowsWithIncorrectResults.Add(i);
+                                        }
+                                        else
+                                        {
+                                            dt.Rows[i][columnIndexResult] = METER_IS_OFFLINE;
+                                            //1. Записать в лог номер счетчика
+                                            string msg = String.Format("Счетчик № {0} в квартире {1} не прошел тест связи", dt.Rows[i][1], dt.Rows[i][0]);
+                                            WriteToLog(msg);
+                                            Invoke(meterPinged);
+                                        }
                                     }
                                 }
                             }
                         }
-
-
-                        if (DemoMode && !isDataCorrect(valList))
-                        {
-                            //1. Записать в лог номер счетчика
-                            string msg = String.Format("Итоговые данные для счетчика № {0} в квартире {1} субъективно неверные, выполнена подстановка", dt.Rows[i][1], dt.Rows[i][0]);
-                            WriteToLog(msg);
-                            //2. Подставить данные
-                            getSampleMeterData(out valList);
-                        }
                 }
 
-
-
-                Invoke(meterPinged);
                 Meter.UnselectAllMeters();
 
                 if (doStopProcess)
                     break;
             }
 
-        END:
-            Invoke(pollingEnd);
-
             //если incorrectRows будет отличен от null - получим бесконечный цикл, когда появится прибор
             //отвечающий некорректно каждый раз.
-            if (incorrectRows == null && rowsWithIncorrectResults.Count > 0)
+            if (inpRowsList == null && rowsWithIncorrectResults.Count > 0 && !doStopProcess)
             {
                 PollMetersArguments pmaOutp = (PollMetersArguments)pollMetersArgs;
                 pmaOutp.dt = dt;
-                pmaOutp.incorrectRows = incorrectRows;
+                pmaOutp.incorrectRows = rowsWithIncorrectResults;
+
                 pollMeters((object)pmaOutp);
             }
+
+        END:
+            Invoke(pollingEnd);
 
         }
 
@@ -919,16 +940,16 @@ namespace teplouchetapp
                                         }
                                     }
 
-                                    if (!isTemperatureCorrect(valList))
-                                    {
-                                        string msg = String.Format("Показания температур счетчика № {0} в квартире {1} субъективно неверные (isTemperatureCorrect == false)", dt.Rows[i][1], dt.Rows[i][0]);
-                                        WriteToLog(msg);
-                                        WriteToSeparateLog(msg + ": " + String.Join(", ", valList.ToArray()));
+                                    //if (!isTemperatureCorrect(valList))
+                                    //{
+                                    //    string msg = String.Format("Показания температур счетчика № {0} в квартире {1} субъективно неверные (isTemperatureCorrect == false)", dt.Rows[i][1], dt.Rows[i][0]);
+                                    //    WriteToLog(msg);
+                                    //    WriteToSeparateLog(msg + ": " + String.Join(", ", valList.ToArray()));
 
-                                        dt.Rows[i][columnIndexResult] = METER_WAIT;
-                                        rowsWithIncorrectResults.Add(i);
-                                        break;
-                                    }
+                                    //    dt.Rows[i][columnIndexResult] = METER_WAIT;
+                                    //    rowsWithIncorrectResults.Add(i);
+                                    //    break;
+                                    //}
 
 
                                     //все нормально, выводим данные которые пришли
@@ -1033,28 +1054,17 @@ namespace teplouchetapp
         {
             for (int k = 0; k < valList.Count; k++)
             {
-                //значение не может быть -1, а температура не может быть нулевой
-                if (valList[k] < 0 || 
-                    (k == 2 && valList[k] < 40) || 
-                    (k == 3 && valList[k] < 10) || 
-                    (k == 4  && valList[k] == 0))
-                {
+                //температура не может быть меньше 10 на входе и на выходе
+                if ((k == 2 && valList[k] < 10) || (k == 3 && valList[k] < 10))
                     return false;
-                }
-            }
-
-            return true;
-        }
-
-        bool isTemperatureCorrect(List<float> valList)
-        {
-            for (int k = 0; k < valList.Count; k++)
-            {
-                //температура не может быть нулевой
-                if ((k == 2 && valList[k] == 0) || (k == 3 && valList[k] == 0))
-                {
+                
+                //энергия и объем врядли быть нулевыми
+                if ((k == 0 && valList[k] == 0) || (k == 1 && valList[k] == 0))
                     return false;
-                }
+
+                //время рабоы прибора врядли может быть нулевым
+                if ((k == 4 && valList[k] == 0))
+                    return false;
             }
 
             return true;
