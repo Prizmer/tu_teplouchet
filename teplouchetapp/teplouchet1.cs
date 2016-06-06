@@ -254,12 +254,12 @@ namespace teplouchetapp
             }
         }
 
-        public bool GetRecordsList(out List<Record> records)
+        public bool GetRecordsList(out List<Record> records, bool FCV = true)
         {
             records = new List<Record>();
 
             List<byte> answerBytes = new List<byte>();
-            if (!SendREQ_UD2(out answerBytes) || answerBytes.Count == 0)
+            if (!SendREQ_UD2(out answerBytes, FCV) || answerBytes.Count == 0)
             {
                 WriteToLog("GetRecordsList: не получены байты ответа");
                 return false;
@@ -373,11 +373,14 @@ namespace teplouchetapp
 
             return true;
         }
-        public bool SendREQ_UD2(out List<byte> recordsBytesList)
+        public bool SendREQ_UD2(out List<byte> recordsBytesList, bool FCV = true)
         {
             recordsBytesList = new List<byte>();
 
             byte cmd = 0x7b;
+            if (!FCV)
+                cmd = 0x4b;
+
             byte CS = (byte)(cmd + m_addr);
 
             byte[] cmdArr = { 0x10, cmd, m_addr, CS, 0x16 };
@@ -491,11 +494,11 @@ namespace teplouchetapp
 
         //Служебный метод, опрашивающий счетчик для всех элементов перечисления Params,
         //и возвращающих ответ в виде строки. Примняется в тестовой утилите драйвера elf.
-        public bool GetAllValues(out string res)
+        public bool GetAllValues(out string res, bool FCV = true)
         {
             res = "Ошибка";
             List<Record> records = new List<Record>();
-            if (!GetRecordsList(out records))
+            if (!GetRecordsList(out records, FCV))
             {
                 WriteToLog("GetAllValues: can't split records");
                 return false;
@@ -542,11 +545,14 @@ namespace teplouchetapp
         //используется для вывода в лог
         public string current_secondary_id_str = "серийный номер не определен";
         //выделяет счетчик по серийнику и возвращает признак того что прибор на связи
-        public bool SelectBySecondaryId(int factoryNumber)
+        public bool SelectBySecondaryId(int factoryNumber, bool FCV = true)
         {
             current_secondary_id_str = factoryNumber.ToString();
 
             byte cmd = 0x53;
+            if (!FCV)
+                cmd = 0x43;
+
             byte CI = 0x52;
 
             byte[] addrArr = null;
@@ -627,13 +633,13 @@ namespace teplouchetapp
         /// </summary>
         /// <param name="valDict"></param>
         /// <returns></returns>
-        public bool ReadCurrentValues(List<int> paramCodes, out List<float> values)
+        public bool ReadCurrentValues(List<int> paramCodes, out List<float> values, bool FCV = true)
         {
             values = new List<float>();
             List<Record> records = new List<Record>();
             List<byte> answerBytes = new List<byte>();
 
-            if (!SendREQ_UD2(out answerBytes) || answerBytes.Count == 0)
+            if (!SendREQ_UD2(out answerBytes, FCV) || answerBytes.Count == 0)
             {
                 WriteToLog("ReadCurrentValues: не получены байты ответа");
                 return false;

@@ -309,6 +309,9 @@ namespace teplouchetapp
             
             meterPinged += new EventHandler(Form1_meterPinged);
             pollingEnd += new EventHandler(Form1_pollingEnd);
+
+            cbFCBSelection.Checked = true;
+            cbFCVREQUD.Checked = true;
         }
 
         void numericUpDownComWriteTimeout_ValueChanged(object sender, EventArgs e)
@@ -723,11 +726,11 @@ namespace teplouchetapp
                             Thread.Sleep(50);
 
                             //выбираем счетчик по серийному номеру (служит также проверкой связи) - в случае успеха приходит 0xE5
-                            if (Meter.SelectBySecondaryId(tmpNumb))
+                            if (Meter.SelectBySecondaryId(tmpNumb, cbFCBSelection.Checked))
                             {
                                 //СЧЕТЧИК НА СВЯЗИ
                                 Thread.Sleep(50);
-                                if (Meter.ReadCurrentValues(paramCodes, out valList))
+                                if (Meter.ReadCurrentValues(paramCodes, out valList, cbFCVREQUD.Checked))
                                 {
                                     //ДАННЫЕ ПРОЧИТАНЫ
 
@@ -1253,18 +1256,18 @@ namespace teplouchetapp
             setVirtualSerialPort();
         }
 
-        private void button4_Click(object sender, EventArgs e)
+
+        private void pollIndividually(string factoryNumber)
         {
             richTextBox1.Clear();
-            string str_fact_n = textBox1.Text;
             int tmpNumb = -1;
-            if (int.TryParse(str_fact_n, out tmpNumb))
+            if (int.TryParse(factoryNumber, out tmpNumb))
             {
                 //служит также проверкой связи
-                if (Meter.SelectBySecondaryId(tmpNumb))
+                if (Meter.SelectBySecondaryId(tmpNumb, cbFCBSelection.Checked))
                 {
                     string resStr = "Метод драйвера GetAllValues вернул false";
-                    Meter.GetAllValues(out resStr);
+                    Meter.GetAllValues(out resStr, cbFCVREQUD.Checked);
                     richTextBox1.Text = resStr;
                     Meter.UnselectAllMeters();
                 }
@@ -1279,6 +1282,12 @@ namespace teplouchetapp
             }
         }
 
+        private void button4_Click(object sender, EventArgs e)
+        {
+            string str_fact_n = textBox1.Text;
+            pollIndividually(str_fact_n);
+        }
+
 
 
         #endregion
@@ -1286,6 +1295,34 @@ namespace teplouchetapp
         private void pictureBoxLogo_Click(object sender, EventArgs e)
         {
             Process.Start("http://prizmer.ru/");
+        }
+
+
+        string tmpFactoryNumberString = "";
+        private void dgv1_CellMouseUp(object sender, DataGridViewCellMouseEventArgs e)
+        {
+            var cellRectangle = dgv1.GetCellDisplayRectangle(e.ColumnIndex, e.RowIndex, true);
+
+            if (e.RowIndex == 0)
+                return;
+
+            if (e.Button == System.Windows.Forms.MouseButtons.Right && dt != null)
+            {
+                dgv1.ClearSelection();
+                dgv1.Rows[e.RowIndex].Selected = true;
+
+                contextMenuStrip1.Show(dgv1, cellRectangle.Left + e.X, cellRectangle.Top + e.Y);
+                int factoryNumberColIndex = 1;
+                object factoryNumber = dt.Rows[e.RowIndex][factoryNumberColIndex];
+                tmpFactoryNumberString = factoryNumber.ToString();
+            }
+   
+        }
+
+        private void btnContextPollMeter_Click(object sender, EventArgs e)
+        {
+            if (tmpFactoryNumberString.Length > 0)
+                pollIndividually(tmpFactoryNumberString);
         }
     }
 }
