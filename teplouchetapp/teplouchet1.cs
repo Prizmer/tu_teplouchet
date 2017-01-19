@@ -190,10 +190,7 @@ namespace teplouchetapp
             {
                 case Params.ENERGY:
                     {
-                        //коэффициент, согласно документации MBUS, после применения дает значение в Wh
-                        //COEFFICIENT = (float)Math.Pow(10, 3);
-                        //однако, счетчик показывает значения в KWh
-                        COEFFICIENT = 1;
+                        COEFFICIENT = (float)Math.Pow(10, -3);
                         break;
                     }
                 case Params.VOLUME_FLOW:
