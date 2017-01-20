@@ -190,7 +190,8 @@ namespace teplouchetapp
             {
                 case Params.ENERGY:
                     {
-                        COEFFICIENT = (float)Math.Pow(10, -3);
+                        //не смотря на то, что по документам k=10^-3, на счетчике отображаются с коэффициентом 1 в квт*ч.
+                        COEFFICIENT = 1;
                         break;
                     }
                 case Params.VOLUME_FLOW:
